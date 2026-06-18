@@ -21,7 +21,7 @@ db.properties
 *.swp
 
 # FFmpeg Executables (huge binary files)
-ffmpeg/
+ffmpeg.exe
 
 # Local Application Caches & Temporary Outputs
 temp/previews/

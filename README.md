@@ -66,10 +66,7 @@ PixClip features a premium custom-styled desktop interface with support for both
 
 ### Prerequisites
 * **Python 3.9+**
-* **FFmpeg**: Required for video preview and exporting. Put the executable in:
-  1. `ffmpeg/ffmpeg.exe` (project directory)
-  2. `ffmpeg.exe` (project root)
-  3. System environment `PATH`
+* **FFmpeg**: Required for video preview and exporting. Place the `ffmpeg.exe` executable inside the `ffmpeg/` folder (or ensure it is added to your system `PATH`).
 
 ### Setup & Run
 1. Install package dependencies:
