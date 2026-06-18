@@ -1,0 +1,31 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# OS-generated files
+Thumbs.db
+db.properties
+.DS_Store
+
+# IDE and Project metadata
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# FFmpeg Executables (huge binary files)
+ffmpeg/
+
+# Local Application Caches & Temporary Outputs
+temp/previews/
+temp/edited/
+temp/thumbnails/
+temp/metadata/
+temp/state.json

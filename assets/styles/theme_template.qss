@@ -1,0 +1,795 @@
+/* ============================================================
+   PixClip Fluent UI Master Stylesheet Template
+   Customized for Windows 11 system blur transparency (Mica/Acrylic)
+   and dynamic Light/Dark mode compilation.
+   ============================================================ */
+
+/* ── Global Settings ───────────────────────────────────────── */
+* {
+    font-family: "Segoe UI Variable Text", "Segoe UI", "Inter", sans-serif;
+    font-size: 13px;
+    color: @TEXT_COLOR@;
+    outline: none;
+}
+
+QMainWindow {
+    background-color: @WINDOW_BG@;
+}
+
+QDialog {
+    background-color: @PANEL_BG@;
+    border: 1px solid @BORDER_COLOR@;
+}
+
+QDialog QLabel {
+    color: @TEXT_COLOR@;
+}
+
+QDialog QLabel#DialogTitle {
+    font-size: 14px;
+    font-weight: bold;
+    color: @TEXT_COLOR@;
+}
+
+QDialog QLabel#DialogSub {
+    color: @TEXT_COLOR_DIM@;
+    font-size: 11px;
+}
+
+QDialog QLabel#DialogStats {
+    color: @TEXT_COLOR@;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+QDialog QLabel#DialogHighlight {
+    color: @ACCENT_COLOR@;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+QDialog QLabel#DialogArrow {
+    color: @ACCENT_COLOR@;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+QWidget {
+    background-color: transparent;
+}
+
+/* ── Panels & Layout Containers ────────────────────────────── */
+#AssetPanel, #AdjustmentPanel, #FilmstripContainer {
+    background-color: @PANEL_BG@;
+    border: 1px solid @BORDER_COLOR@;
+    border-radius: 8px;
+}
+
+#PreviewContainer {
+    background-color: @PREVIEW_BG@;
+    border: 1px solid @BORDER_COLOR@;
+    border-radius: 8px;
+}
+
+QScrollArea, QScrollArea > QWidget {
+    background-color: transparent;
+    background: transparent;
+    border: none;
+}
+
+/* ── Custom Styled Headers & Toolbar Bars ─────────────────── */
+QWidget#AssetHeader {
+    background-color: @WINDOW_BG@;
+    border-bottom: 1px solid @BORDER_COLOR@;
+}
+
+QWidget#ZoomToolbar {
+    background-color: @WINDOW_BG@;
+    border-bottom: 1px solid @BORDER_COLOR@;
+}
+
+QWidget#VideoControlsBar {
+    background-color: @WINDOW_BG@;
+    border-top: 1px solid @BORDER_COLOR@;
+}
+
+QWidget#InfoBar {
+    background-color: @WINDOW_BG@;
+    border-bottom: 1px solid @BORDER_COLOR@;
+}
+
+QWidget#PresetBar {
+    background-color: @WINDOW_BG@;
+    border-bottom: 1px solid @BORDER_COLOR@;
+}
+
+QWidget#ExportBar {
+    background-color: @WINDOW_BG@;
+    border-top: 1px solid @BORDER_COLOR@;
+}
+
+/* ── Thin, Minimal Fluent Scrollbars ───────────────────────── */
+QScrollBar:vertical {
+    background: transparent;
+    width: 6px;
+    margin: 0;
+}
+QScrollBar::handle:vertical {
+    background: @SCROLL_HANDLE@;
+    border-radius: 3px;
+    min-height: 24px;
+}
+QScrollBar::handle:vertical:hover {
+    background: @ACCENT_COLOR@;
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0;
+}
+QScrollBar:horizontal {
+    background: transparent;
+    height: 6px;
+    margin: 0;
+}
+QScrollBar::handle:horizontal {
+    background: @SCROLL_HANDLE@;
+    border-radius: 3px;
+    min-width: 24px;
+}
+QScrollBar::handle:horizontal:hover {
+    background: @ACCENT_COLOR@;
+}
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    width: 0;
+}
+
+/* ── Sliders ──────────────────────────────────────────────── */
+QSlider::groove:horizontal {
+    height: 4px;
+    background: @SLIDER_GROOVE@;
+    border-radius: 2px;
+}
+QSlider::sub-page:horizontal {
+    background: @ACCENT_COLOR@;
+    border-radius: 2px;
+}
+QSlider::handle:horizontal {
+    background: #FFFFFF;
+    border: 3px solid @ACCENT_COLOR@;
+    width: 14px;
+    height: 14px;
+    margin: -5px 0;
+    border-radius: 7px;
+}
+QSlider::handle:horizontal:hover {
+    background: @ACCENT_COLOR@;
+    border-color: #FFFFFF;
+}
+QSlider::handle:horizontal:pressed {
+    background: @ACCENT_PRESSED@;
+}
+
+/* ── Buttons ──────────────────────────────────────────────── */
+QPushButton {
+    background-color: @CONTROL_BG@;
+    color: @TEXT_COLOR@;
+    border: 1px solid @CONTROL_BORDER@;
+    border-radius: 6px;
+    padding: 5px 14px;
+    font-weight: 500;
+}
+QPushButton:hover {
+    background-color: @CONTROL_BG_HOVER@;
+    border-color: @ACCENT_COLOR@;
+    color: @TEXT_COLOR@;
+}
+QPushButton:pressed {
+    background-color: @CONTROL_BG_PRESSED@;
+}
+QPushButton#PrimaryButton {
+    background-color: @ACCENT_COLOR@;
+    color: #FFFFFF;
+    border: none;
+    font-weight: 600;
+}
+QPushButton#PrimaryButton:hover {
+    background-color: @ACCENT_HOVER@;
+}
+QPushButton#PrimaryButton:pressed {
+    background-color: @ACCENT_PRESSED@;
+}
+QPushButton#DangerButton {
+    background-color: @DANGER_BG@;
+    border: 1px solid @DANGER_BORDER@;
+    color: @DANGER_TEXT@;
+}
+QPushButton#DangerButton:hover {
+    background-color: @DANGER_BG_HOVER@;
+    border-color: @DANGER_BORDER_HOVER@;
+}
+QPushButton#IconButton {
+    background: transparent;
+    border: none;
+    padding: 4px;
+    border-radius: 6px;
+}
+QPushButton#IconButton:hover {
+    background-color: @LIST_ITEM_HOVER@;
+    border: none;
+}
+QPushButton#IconButton:pressed {
+    background-color: @CONTROL_BG_HOVER@;
+    border: none;
+}
+
+/* ── Preview Mode Tabs & Pivots ────────────────────────────── */
+QWidget#TabContainer {
+    background: @PREVIEW_BG@;
+    border: 1px solid @BORDER_COLOR@;
+    border-radius: 6px;
+    padding: 2px;
+}
+QPushButton#TabButton {
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 16px;
+    color: @TEXT_COLOR_DIM@;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+QPushButton#TabButton:hover {
+    color: @TEXT_COLOR@;
+    background: @LIST_ITEM_HOVER@;
+}
+QPushButton#TabButton:checked {
+    background: @CONTROL_BG@;
+    color: @ACCENT_COLOR@;
+}
+
+/* ── Workspace Tabs (Main Navigation) ──────────────────────── */
+QTabWidget::pane {
+    border: none;
+    background: transparent;
+}
+QTabBar::tab {
+    background: transparent;
+    color: @TEXT_COLOR_DIM@;
+    padding: 10px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    border-bottom: 3px solid transparent;
+}
+QTabBar::tab:hover {
+    color: @TEXT_COLOR@;
+    background: @CONTROL_BG_HOVER@;
+}
+QTabBar::tab:selected {
+    color: @ACCENT_COLOR@;
+    border-bottom: 3px solid @ACCENT_COLOR@;
+    background: transparent;
+}
+QTabBar::tab:focus {
+    outline: none;
+}
+
+/* ── Labels & Text ────────────────────────────────────────── */
+QLabel {
+    color: @TEXT_COLOR@;
+    background: transparent;
+}
+QLabel#SectionHeader {
+    color: @ACCENT_COLOR@;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 4px 0 2px 0;
+}
+QLabel#ValueLabel {
+    color: @TEXT_COLOR@;
+    font-size: 12px;
+    font-weight: 600;
+    min-width: 36px;
+    text-align: right;
+}
+QLabel#ParamLabel {
+    color: @TEXT_COLOR_DIM@;
+    font-size: 12px;
+}
+
+/* ── Text Inputs (QLineEdit) ──────────────────────────────── */
+QLineEdit {
+    background-color: @CONTROL_BG@;
+    border: 1px solid @CONTROL_BORDER@;
+    border-radius: 6px;
+    padding: 5px 8px;
+    color: @TEXT_COLOR@;
+    selection-background-color: @ACCENT_COLOR@;
+}
+QLineEdit:focus {
+    border-color: @ACCENT_COLOR@;
+    background-color: @PREVIEW_BG@;
+}
+
+/* ── ComboBox ─────────────────────────────────────────────── */
+QComboBox {
+    background-color: @CONTROL_BG@;
+    border: 1px solid @CONTROL_BORDER@;
+    border-radius: 6px;
+    padding: 5px 8px;
+    color: @TEXT_COLOR@;
+}
+QComboBox:hover {
+    border-color: @ACCENT_COLOR@;
+}
+QComboBox::drop-down {
+    border: none;
+    width: 20px;
+}
+QComboBox QAbstractItemView {
+    background-color: @CONTROL_BG@;
+    border: 1px solid @CONTROL_BORDER@;
+    selection-background-color: @ACCENT_COLOR@;
+    selection-color: #FFFFFF;
+    color: @TEXT_COLOR@;
+    border-radius: 6px;
+}
+
+/* ── RadioButtons & Checkboxes ────────────────────────────── */
+QRadioButton {
+    color: @TEXT_COLOR_DIM@;
+    spacing: 6px;
+    font-size: 12px;
+    background: transparent;
+}
+QRadioButton:checked {
+    color: @TEXT_COLOR@;
+}
+QRadioButton::indicator {
+    width: 14px;
+    height: 14px;
+    border-radius: 7px;
+    border: 2px solid @CONTROL_BORDER@;
+    background: transparent;
+}
+QRadioButton::indicator:checked {
+    background: @ACCENT_COLOR@;
+    border-color: @ACCENT_COLOR@;
+}
+QRadioButton::indicator:hover {
+    border-color: @ACCENT_COLOR@;
+}
+
+QCheckBox {
+    color: @TEXT_COLOR_DIM@;
+    spacing: 6px;
+    background: transparent;
+}
+QCheckBox:checked {
+    color: @TEXT_COLOR@;
+}
+QCheckBox::indicator {
+    width: 14px;
+    height: 14px;
+    border: 2px solid @CONTROL_BORDER@;
+    border-radius: 3px;
+    background: transparent;
+}
+QCheckBox::indicator:checked {
+    background-color: @ACCENT_COLOR@;
+    border-color: @ACCENT_COLOR@;
+}
+
+/* ── List & Tree Widgets ──────────────────────────────────── */
+QListWidget, QTreeWidget {
+    background-color: @PREVIEW_BG@;
+    border: none;
+    alternate-background-color: @PANEL_BG@;
+}
+QListWidget::item, QTreeWidget::item {
+    padding: 5px 8px;
+    border-radius: 6px;
+}
+QListWidget::item:hover, QTreeWidget::item:hover {
+    background-color: @LIST_ITEM_HOVER@;
+}
+QListWidget::item:selected, QTreeWidget::item:selected {
+    background-color: @LIST_ITEM_SELECTED@;
+    color: @TEXT_COLOR@;
+    border: 1px solid @ACCENT_COLOR@;
+}
+
+/* ── ToolTips ─────────────────────────────────────────────── */
+QToolTip {
+    background-color: @CONTROL_BG@;
+    color: @TEXT_COLOR@;
+    border: 1px solid @CONTROL_BORDER@;
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
+/* ── MenuBar & Dropdown Menus ─────────────────────────────── */
+QMenuBar {
+    background-color: @WINDOW_BG@;
+    border-bottom: 1px solid @BORDER_COLOR@;
+    padding: 2px 0;
+    color: @TEXT_COLOR@;
+}
+QMenuBar::item {
+    padding: 5px 12px;
+    border-radius: 4px;
+    color: @TEXT_COLOR@;
+    background: transparent;
+}
+QMenuBar::item:selected {
+    background-color: @CONTROL_BG@;
+    color: @TEXT_COLOR@;
+}
+QMenu {
+    background-color: @PANEL_BG@;
+    border: 1px solid @BORDER_COLOR@;
+    border-radius: 8px;
+    padding: 4px 0;
+}
+QMenu::item {
+    padding: 6px 20px 6px 14px;
+    color: @TEXT_COLOR@;
+}
+QMenu::item:selected {
+    background-color: @LIST_ITEM_SELECTED@;
+    color: @TEXT_COLOR@;
+}
+QMenu::separator {
+    height: 1px;
+    background: @BORDER_COLOR@;
+    margin: 4px 10px;
+}
+
+/* ── Workspace Tab Widget ───────────────────────────────── */
+QTabWidget#WorkspaceTabs::pane {
+    border: none;
+    background: transparent;
+}
+QTabWidget#WorkspaceTabs > QTabBar::tab {
+    background: transparent;
+    color: @TEXT_COLOR_DIM@;
+    padding: 8px 22px;
+    font-size: 13px;
+    font-weight: 600;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: 0px;
+    min-width: 100px;
+}
+QTabWidget#WorkspaceTabs > QTabBar::tab:hover {
+    color: @TEXT_COLOR@;
+    background: @LIST_ITEM_HOVER@;
+}
+QTabWidget#WorkspaceTabs > QTabBar::tab:selected {
+    color: @TEXT_COLOR@;
+    border-bottom: 2px solid @ACCENT_COLOR@;
+    background: @ACCENT_LIGHT@;
+}
+QTabWidget#WorkspaceTabs > QTabBar {
+    background: @WINDOW_BG@;
+    border-bottom: 1px solid @BORDER_COLOR@;
+}
+
+/* ── Status Bar ───────────────────────────────────────────── */
+QStatusBar {
+    background-color: @WINDOW_BG@;
+    border-top: 1px solid @BORDER_COLOR@;
+    color: @TEXT_COLOR_DIM@;
+    font-size: 11px;
+}
+
+/* ── Splitter Handles ─────────────────────────────────────── */
+QSplitter::handle {
+    background: @BORDER_COLOR@;
+    width: 2px;
+    height: 2px;
+}
+QSplitter::handle:hover {
+    background: @ACCENT_COLOR@;
+}
+
+/* ── Progress Bars ────────────────────────────────────────── */
+QProgressBar {
+    background-color: @CONTROL_BG@;
+    border: 1px solid @CONTROL_BORDER@;
+    border-radius: 6px;
+    text-align: center;
+    color: @TEXT_COLOR@;
+    font-size: 11px;
+    height: 12px;
+}
+QProgressBar::chunk {
+    background-color: @ACCENT_COLOR@;
+    border-radius: 6px;
+}
+
+/* ── Specific custom component IDs ───────────────────────── */
+#FilterButton {
+    background-color: @CONTROL_BG@;
+    border: 1px solid @CONTROL_BORDER@;
+    border-radius: 8px;
+    color: @TEXT_COLOR_DIM@;
+    font-size: 11px;
+    padding: 4px;
+}
+#FilterButton:hover {
+    border-color: @ACCENT_HOVER@;
+    color: @TEXT_COLOR@;
+}
+#FilterButton[active="true"] {
+    border-color: @ACCENT_COLOR@;
+    color: @TEXT_COLOR@;
+    background-color: @ACCENT_LIGHT@;
+}
+
+#AssetThumbnail {
+    border: 2px solid transparent;
+    border-radius: 8px;
+    background-color: @CONTROL_BG@;
+}
+#AssetThumbnail:hover {
+    border-color: @ACCENT_HOVER@;
+    background-color: @CONTROL_BG_HOVER@;
+}
+#AssetThumbnail[active="true"] {
+    border-color: @ACCENT_COLOR@;
+    background-color: @ACCENT_LIGHT@;
+}
+
+#FilmstripThumb {
+    border: 2px solid @BORDER_COLOR@;
+    border-radius: 8px;
+    background-color: @CONTROL_BG@;
+}
+#FilmstripThumb:hover {
+    border-color: @ACCENT_HOVER@;
+    background-color: @CONTROL_BG_HOVER@;
+}
+#FilmstripThumb[active="true"] {
+    border-color: @ACCENT_COLOR@;
+    background-color: @ACCENT_LIGHT@;
+}
+
+#ScopeBar {
+    background-color: @CONTROL_BG@;
+    border-radius: 8px;
+    padding: 3px;
+}
+
+#ZoomLabel {
+    color: @TEXT_COLOR_DIM@;
+    font-size: 11px;
+    background: @WINDOW_BG@;
+    border: 1px solid @BORDER_COLOR@;
+    border-radius: 6px;
+    padding: 2px 8px;
+}
+
+#FilmstripContainer {
+    background-color: @WINDOW_BG@;
+    border-top: 1px solid @BORDER_COLOR@;
+}
+
+/* ── Segmented Control in ScopeBar ──────────────────────────────── */
+QWidget#SegmentedContainer {
+    background-color: @CONTROL_BG@;
+    border: 1px solid @CONTROL_BORDER@;
+    border-radius: 6px;
+}
+QWidget#SegmentedContainer QPushButton {
+    background-color: transparent;
+    color: @TEXT_COLOR_DIM@;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 14px;
+    font-size: 11px;
+    font-weight: 600;
+    min-height: 20px;
+}
+QWidget#SegmentedContainer QPushButton:hover {
+    color: @TEXT_COLOR@;
+    background-color: @LIST_ITEM_HOVER@;
+}
+QWidget#SegmentedContainer QPushButton:checked {
+    background-color: @ACCENT_COLOR@;
+    color: #FFFFFF;
+}
+
+QComboBox#GroupCombo {
+    background-color: @CONTROL_BG@;
+    color: @TEXT_COLOR@;
+    border: 1px solid @CONTROL_BORDER@;
+    border-radius: 6px;
+    padding: 4px 18px 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+}
+QComboBox#GroupCombo:hover {
+    border-color: @ACCENT_COLOR@;
+}
+QComboBox#GroupCombo::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 15px;
+    border-left-width: 1px;
+    border-left-color: @CONTROL_BORDER@;
+    border-left-style: solid;
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+QComboBox#GroupCombo QAbstractItemView {
+    background-color: @CONTROL_BG@;
+    color: @TEXT_COLOR@;
+    selection-background-color: @ACCENT_COLOR@;
+    selection-color: #FFFFFF;
+    border: 1px solid @CONTROL_BORDER@;
+    border-radius: 6px;
+}
+QComboBox#GroupCombo:disabled {
+    background-color: @WINDOW_BG@;
+    color: @TEXT_COLOR_DIM@;
+    border-color: @BORDER_COLOR@;
+}
+
+QFrame#PresetSaveFrame {
+    background-color: @CONTROL_BG@;
+    border: 1px solid @CONTROL_BORDER@;
+    border-radius: 8px;
+}
+
+/* ── InfoBar & Status Labels ────────────────────────────── */
+QLabel#InfoTitle {
+    font-size: 12px;
+    font-weight: 700;
+    color: @TEXT_COLOR@;
+}
+
+QLabel#InfoBadge {
+    font-size: 10px;
+    color: @ACCENT_COLOR@;
+    padding: 2px 8px;
+    background: @ACCENT_LIGHT@;
+    border-radius: 4px;
+}
+
+QLabel#InfoSub {
+    color: @TEXT_COLOR_DIM@;
+    font-size: 11px;
+}
+
+QLabel#InfoFlash {
+    font-size: 14px;
+    color: @ACCENT_COLOR@;
+}
+
+/* ── Asset Panel Labels ─────────────────────────────────── */
+QLabel#AssetThumbImage, QLabel#StoryboardThumbImage {
+    background-color: @CONTROL_BG@;
+    border-radius: 6px;
+}
+
+QLabel#AssetStatus {
+    color: @TEXT_COLOR_DIM@;
+    font-size: 8px;
+}
+
+QLabel#AssetName {
+    color: @TEXT_COLOR_DIM@;
+    font-size: 10px;
+}
+QLabel#AssetName[hasGroup="true"] {
+    color: @ACCENT_COLOR@;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+QLabel#AssetDuration {
+    color: @TEXT_COLOR_DIM@;
+    font-size: 9px;
+    font-weight: 600;
+}
+
+QLabel#DropHint {
+    color: @TEXT_COLOR_DIM@;
+    font-size: 12px;
+    padding: 20px;
+}
+
+#AssetPanel[dragActive="true"] {
+    border: 1px solid @ACCENT_COLOR@;
+}
+
+/* ── Filter Strip ───────────────────────────────────────── */
+QFrame#DividerLine {
+    background-color: @BORDER_COLOR@;
+    border: none;
+}
+
+QWidget#FilterInner {
+    background-color: @PANEL_BG@;
+}
+
+QPushButton#FilterFamilyTab {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: @TEXT_COLOR_DIM@;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 0 10px;
+    border-radius: 0;
+}
+QPushButton#FilterFamilyTab:checked {
+    color: @ACCENT_COLOR@;
+    border-bottom-color: @ACCENT_COLOR@;
+}
+QPushButton#FilterFamilyTab:hover {
+    color: @TEXT_COLOR@;
+}
+
+QLabel#FilterThumbImage {
+    background-color: @CONTROL_BG@;
+    border-radius: 6px;
+}
+
+QLabel#FilterName {
+    color: @TEXT_COLOR_DIM@;
+    font-size: 10px;
+}
+QLabel#FilterName[active="true"] {
+    color: @TEXT_COLOR@;
+    font-weight: 600;
+}
+
+/* ── Thumbnails & Info Labels ────────────────────────────── */
+QLabel#ThumbImage {
+    background-color: @PREVIEW_BG@;
+    border-radius: 6px;
+}
+
+QLabel#StatusIndicator {
+    background-color: @TEXT_COLOR_DIM@;
+    border-radius: 4px;
+}
+
+QLabel#StatusIndicator[edited="true"] {
+    background-color: @ACCENT_COLOR@;
+}
+
+QLabel#ThumbName {
+    color: @TEXT_COLOR_DIM@;
+    font-size: 10px;
+}
+
+QLabel#ThumbName[hasGroup="true"] {
+    color: @ACCENT_COLOR@;
+    font-weight: 600;
+}
+
+QLabel#CountLabel {
+    color: @TEXT_COLOR_DIM@;
+    font-size: 11px;
+}
+
+QLabel#PreviewInfoLabel {
+    color: @TEXT_COLOR_DIM@;
+    font-size: 11px;
+}
+
+QFrame#SectionDivider {
+    background-color: @BORDER_COLOR@;
+    border: none;
+}
+
+QGraphicsView {
+    background-color: @PREVIEW_BG@;
+    border: none;
+}
