@@ -23,9 +23,7 @@
 
 ## Application Preview
 
-<video src="https://github.com/thisal-d/pixclip/raw/main/docs/media/videos/app-demo.mp4" width="100%" autoplay loop muted controls>
-  <p>Your browser or markdown reader does not support inline video. <a href="https://github.com/thisal-d/pixclip/raw/main/docs/media/videos/app-demo.mp4">Click here to watch the demo video</a>.</p>
-</video>
+https://github.com/user-attachments/assets/2b0d209f-089d-4e81-b8a7-af66dbd20cdc
 
 ---
 
