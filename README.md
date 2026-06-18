@@ -6,7 +6,7 @@
   <p><strong>Simple, fast, and powerful image & video editor specializing in professional clarity, sharpness, and custom filters.</strong></p>
 
   [![Downloads](https://img.shields.io/sourceforge/dm/pixclip.svg?label=Downloads)](https://sourceforge.net/projects/pixclip/files/latest/download)
-  [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+  [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
   ![Python](https://img.shields.io/badge/Python-3.9%2B-blue)
   ![UI](https://img.shields.io/badge/UI-PySide6%20%2F%20Qt6-green)
   ![Version](https://img.shields.io/badge/version-1.0.0-orange)
