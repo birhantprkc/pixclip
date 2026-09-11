@@ -44,11 +44,60 @@ from ui.filter_strip import FilterStrip
 from ui.filmstrip import FilmstripWidget
 from ui.scope_selector import ScopeSelector
 from ui.preset_dialog import PresetDialog
+from ui.profile_library_dialog import ProfileLibraryDialog, profile_to_params
 
 from ui.video_asset_panel import VideoAssetPanel
 from ui.video_preview_widget import VideoPreviewWidget
 from core.video_processor import VideoExportWorker
 from ui.quick_video_editor import QuickVideoEditor
+
+
+# ── Auto Enhance Background Worker ──────────────────────────────────────────
+
+class AutoEnhancePhotoWorker(QThread):
+    """
+    Runs auto_enhance_photo() in a background thread so the UI never blocks.
+    Emits finished(EditProfile) or error(str).
+    """
+    from PySide6.QtCore import Signal as _Signal
+    finished_profile = Signal(object)   # object = EditProfile
+    error = Signal(str)
+
+    def __init__(self, path: Path):
+        super().__init__()
+        self._path = path
+
+    def run(self):
+        try:
+            from auto_enhance import auto_enhance_photo
+            profile = auto_enhance_photo(str(self._path))
+            self.finished_profile.emit(profile)
+        except Exception as exc:
+            self.error.emit(str(exc))
+
+
+class AutoEnhanceVideoWorker(QThread):
+    """
+    Runs auto_enhance_video_profile() in a background thread.
+    Emits finished(EditProfile) or error(str).
+    """
+    finished_profile = Signal(object)   # object = EditProfile
+    error = Signal(str)
+
+    def __init__(self, path: Path, num_samples: int = 30):
+        super().__init__()
+        self._path = path
+        self._num_samples = num_samples
+
+    def run(self):
+        try:
+            from auto_enhance import auto_enhance_video_profile
+            profile, _info = auto_enhance_video_profile(
+                str(self._path), num_samples=self._num_samples
+            )
+            self.finished_profile.emit(profile)
+        except Exception as exc:
+            self.error.emit(str(exc))
 
 
 # ── Background Render Worker ──────────────────────────────────────────────────
@@ -564,25 +613,47 @@ class MainWindow(QMainWindow):
         preset_bar.setObjectName("PresetBar")
         pb_layout = QHBoxLayout(preset_bar)
         pb_layout.setContentsMargins(10, 4, 10, 4)
-        pb_layout.setSpacing(6)
+        pb_layout.setSpacing(4)
 
         presets_lbl = QLabel("ADJUSTMENTS")
         presets_lbl.setObjectName("SectionHeader")
 
+        self._btn_auto_enhance = QPushButton("✨ Auto")
+        self._btn_auto_enhance.setFixedHeight(26)
+        self._btn_auto_enhance.setToolTip("Automatically analyze the image and set optimal adjustments")
+        self._btn_auto_enhance.clicked.connect(self._auto_enhance_photo)
+
+        self._btn_revert_enhance = QPushButton("↩ Revert")
+        self._btn_revert_enhance.setFixedHeight(26)
+        self._btn_revert_enhance.setToolTip("Revert to settings before last Auto Enhance")
+        self._btn_revert_enhance.setEnabled(False)
+        self._btn_revert_enhance.clicked.connect(self._revert_photo_enhance)
+
+        self._btn_profiles = QPushButton("📂 Profiles")
+        self._btn_profiles.setFixedHeight(26)
+        self._btn_profiles.setToolTip("Save / load named adjustment profiles")
+        self._btn_profiles.clicked.connect(self._open_profiles)
+
         self._btn_presets = QPushButton("Presets")
-        self._btn_presets.setFixedHeight(28)
+        self._btn_presets.setFixedHeight(26)
         self._btn_presets.clicked.connect(self._open_presets)
 
         self._btn_reset = QPushButton("Reset")
-        self._btn_reset.setFixedHeight(28)
+        self._btn_reset.setFixedHeight(26)
         self._btn_reset.setObjectName("DangerButton")
         self._btn_reset.clicked.connect(self._reset_all)
         self._btn_reset.setToolTip("Reset all adjustments to default")
 
         pb_layout.addWidget(presets_lbl)
         pb_layout.addStretch()
+        pb_layout.addWidget(self._btn_auto_enhance)
+        pb_layout.addWidget(self._btn_revert_enhance)
+        pb_layout.addWidget(self._btn_profiles)
         pb_layout.addWidget(self._btn_presets)
         pb_layout.addWidget(self._btn_reset)
+
+        # Pre-enhance snapshot for Revert support (Photo Editor)
+        self._pre_enhance_params_photo: Optional[AdjustmentParams] = None
 
         self._adj_panel = AdjustmentPanel()
         right_layout.addWidget(preset_bar)
@@ -643,25 +714,47 @@ class MainWindow(QMainWindow):
         video_preset_bar.setObjectName("PresetBar")
         vpb_layout = QHBoxLayout(video_preset_bar)
         vpb_layout.setContentsMargins(10, 4, 10, 4)
-        vpb_layout.setSpacing(6)
+        vpb_layout.setSpacing(4)
 
         video_presets_lbl = QLabel("ADJUSTMENTS")
         video_presets_lbl.setObjectName("SectionHeader")
 
+        self._btn_video_auto_enhance = QPushButton("✨ Auto")
+        self._btn_video_auto_enhance.setFixedHeight(26)
+        self._btn_video_auto_enhance.setToolTip("Analyze video frames and set optimal adjustments")
+        self._btn_video_auto_enhance.clicked.connect(self._auto_enhance_video)
+
+        self._btn_video_revert_enhance = QPushButton("↩ Revert")
+        self._btn_video_revert_enhance.setFixedHeight(26)
+        self._btn_video_revert_enhance.setToolTip("Revert to settings before last Auto Enhance")
+        self._btn_video_revert_enhance.setEnabled(False)
+        self._btn_video_revert_enhance.clicked.connect(self._revert_video_enhance)
+
+        self._btn_video_profiles = QPushButton("📂 Profiles")
+        self._btn_video_profiles.setFixedHeight(26)
+        self._btn_video_profiles.setToolTip("Save / load named adjustment profiles")
+        self._btn_video_profiles.clicked.connect(self._open_video_profiles)
+
         self._btn_video_presets = QPushButton("Presets")
-        self._btn_video_presets.setFixedHeight(28)
+        self._btn_video_presets.setFixedHeight(26)
         self._btn_video_presets.clicked.connect(self._open_video_presets)
 
         self._btn_video_reset = QPushButton("Reset")
-        self._btn_video_reset.setFixedHeight(28)
+        self._btn_video_reset.setFixedHeight(26)
         self._btn_video_reset.setObjectName("DangerButton")
         self._btn_video_reset.clicked.connect(self._reset_video_all)
         self._btn_video_reset.setToolTip("Reset all video adjustments to default")
 
         vpb_layout.addWidget(video_presets_lbl)
         vpb_layout.addStretch()
+        vpb_layout.addWidget(self._btn_video_auto_enhance)
+        vpb_layout.addWidget(self._btn_video_revert_enhance)
+        vpb_layout.addWidget(self._btn_video_profiles)
         vpb_layout.addWidget(self._btn_video_presets)
         vpb_layout.addWidget(self._btn_video_reset)
+
+        # Pre-enhance snapshot for Revert support (Video Editor)
+        self._pre_enhance_params_video: Optional[AdjustmentParams] = None
 
         self._video_adj_panel = AdjustmentPanel()
         vr_layout.addWidget(video_preset_bar)
@@ -1468,6 +1561,118 @@ class MainWindow(QMainWindow):
         dialog.cancelled.connect(worker.cancel)
 
         worker.start()
+        dialog.exec()
+
+    # ── Photo Editor — Auto Enhance ───────────────────────────────────────────
+
+    def _auto_enhance_photo(self) -> None:
+        """Run auto_enhance_photo() in a background thread and apply the result."""
+        img = self._state.active_image
+        if img is None:
+            QMessageBox.information(self, "No Image", "Please select an image first.")
+            return
+        if img.original is None:
+            from core.batch import load_image_record
+            load_image_record(img)
+        if img.original is None:
+            QMessageBox.warning(self, "Not Loaded", "Image could not be loaded for analysis.")
+            return
+
+        # Snapshot current params so Revert can restore them
+        self._pre_enhance_params_photo = self._state.resolved_params(img.id).copy()
+        self._btn_revert_enhance.setEnabled(False)
+
+        self._btn_auto_enhance.setEnabled(False)
+        self._set_status("✨ Analyzing image…")
+
+        self._ae_photo_worker = AutoEnhancePhotoWorker(img.path)
+        self._ae_photo_worker.finished_profile.connect(self._on_photo_enhance_done)
+        self._ae_photo_worker.error.connect(self._on_photo_enhance_error)
+        self._ae_photo_worker.start()
+
+    @Slot(object)
+    def _on_photo_enhance_done(self, profile) -> None:
+        """Apply the EditProfile returned by AutoEnhancePhotoWorker."""
+        self._btn_auto_enhance.setEnabled(True)
+        params = profile_to_params(profile)
+        self._apply_preset(params)                # uses existing scope-aware preset path
+        self._btn_revert_enhance.setEnabled(True)
+        self._set_status("✨ Auto Enhance applied — click ↩ Revert to undo")
+
+    @Slot(str)
+    def _on_photo_enhance_error(self, err: str) -> None:
+        self._btn_auto_enhance.setEnabled(True)
+        self._set_status(f"Auto Enhance failed: {err}")
+        QMessageBox.critical(self, "Auto Enhance Error", err)
+
+    def _revert_photo_enhance(self) -> None:
+        """Restore the snapshot taken just before the last Auto Enhance."""
+        if self._pre_enhance_params_photo is None:
+            return
+        self._apply_preset(self._pre_enhance_params_photo)
+        self._btn_revert_enhance.setEnabled(False)
+        self._pre_enhance_params_photo = None
+        self._set_status("↩ Reverted to pre-enhance settings")
+
+    def _open_profiles(self) -> None:
+        """Open the persistent ProfileLibrary dialog for the Photo Editor."""
+        img = self._state.active_image
+        current = self._state.resolved_params(img.id) if img else AdjustmentParams()
+        dialog = ProfileLibraryDialog(current, self)
+        dialog.profile_loaded.connect(self._apply_preset)
+        dialog.exec()
+
+    # ── Video Editor — Auto Enhance ───────────────────────────────────────────
+
+    def _auto_enhance_video(self) -> None:
+        """Run auto_enhance_video_profile() in a background thread and apply result."""
+        vid = self._state.active_video
+        if vid is None:
+            QMessageBox.information(self, "No Video", "Please select a video first.")
+            return
+
+        # Snapshot current params for Revert
+        self._pre_enhance_params_video = vid.params.copy()
+        self._btn_video_revert_enhance.setEnabled(False)
+
+        self._btn_video_auto_enhance.setEnabled(False)
+        self._set_status("✨ Sampling video frames for analysis…")
+
+        self._ae_video_worker = AutoEnhanceVideoWorker(vid.path, num_samples=30)
+        self._ae_video_worker.finished_profile.connect(self._on_video_enhance_done)
+        self._ae_video_worker.error.connect(self._on_video_enhance_error)
+        self._ae_video_worker.start()
+
+    @Slot(object)
+    def _on_video_enhance_done(self, profile) -> None:
+        """Apply the EditProfile returned by AutoEnhanceVideoWorker."""
+        self._btn_video_auto_enhance.setEnabled(True)
+        params = profile_to_params(profile)
+        self._apply_video_preset(params)          # uses existing video preset path
+        self._btn_video_revert_enhance.setEnabled(True)
+        self._set_status("✨ Auto Enhance applied to video — click ↩ Revert to undo")
+
+    @Slot(str)
+    def _on_video_enhance_error(self, err: str) -> None:
+        self._btn_video_auto_enhance.setEnabled(True)
+        self._set_status(f"Video Auto Enhance failed: {err}")
+        QMessageBox.critical(self, "Auto Enhance Error", err)
+
+    def _revert_video_enhance(self) -> None:
+        """Restore the snapshot taken just before the last Video Auto Enhance."""
+        if self._pre_enhance_params_video is None:
+            return
+        self._apply_video_preset(self._pre_enhance_params_video)
+        self._btn_video_revert_enhance.setEnabled(False)
+        self._pre_enhance_params_video = None
+        self._set_status("↩ Reverted video to pre-enhance settings")
+
+    def _open_video_profiles(self) -> None:
+        """Open the persistent ProfileLibrary dialog for the Video Editor."""
+        vid = self._state.active_video
+        current = vid.params if vid else AdjustmentParams()
+        dialog = ProfileLibraryDialog(current, self)
+        dialog.profile_loaded.connect(self._apply_video_preset)
         dialog.exec()
 
     # ── Video Presets & Reset ─────────────────────────────────────────────────

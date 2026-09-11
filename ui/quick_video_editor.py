@@ -45,6 +45,33 @@ from ui.filter_strip import FilterStrip
 from ui.adjustment_panel import AdjustmentPanel, ParamSlider
 from ui.storyboard_strip import VideoStoryboardStrip
 from ui.preview_widget import ShimmerOverlay
+from ui.profile_library_dialog import ProfileLibraryDialog, profile_to_params
+
+
+# ── Auto Enhance Worker (Quick Video Editor) ──────────────────────────────────────
+
+class QuickAutoEnhanceWorker(QThread):
+    """
+    Runs auto_enhance_video_profile() in a background thread so the UI stays
+    responsive during frame sampling.
+    """
+    finished_profile = Signal(object)   # EditProfile
+    error = Signal(str)
+
+    def __init__(self, path: str, num_samples: int = 30):
+        super().__init__()
+        self._path = path
+        self._num_samples = num_samples
+
+    def run(self):
+        try:
+            from auto_enhance import auto_enhance_video_profile
+            profile, _info = auto_enhance_video_profile(
+                self._path, num_samples=self._num_samples
+            )
+            self.finished_profile.emit(profile)
+        except Exception as exc:
+            self.error.emit(str(exc))
 
 
 # ── FFmpeg Export Worker ───────────────────────────────────────────────────────
@@ -453,6 +480,8 @@ class QuickVideoEditor(QWidget):
         self._current_raw_frame: Optional[np.ndarray] = None
         self._show_processed = False
         self._export_worker: Optional[QuickExportWorker] = None
+        self._ae_worker: Optional[QuickAutoEnhanceWorker] = None
+        self._pre_enhance_params: Optional[AdjustmentParams] = None  # for Revert
 
         # Setup background render thread for static preview updates
         self._render_thread = QThread()
@@ -594,24 +623,45 @@ class QuickVideoEditor(QWidget):
         preset_bar.setFixedHeight(38)
         preset_bar.setObjectName("PresetBar")
         pb_layout = QHBoxLayout(preset_bar)
-        pb_layout.setContentsMargins(10, 4, 10, 4)
-        pb_layout.setSpacing(6)
+        pb_layout.setContentsMargins(8, 4, 8, 4)
+        pb_layout.setSpacing(4)
 
         adj_lbl = QLabel("ADJUSTMENTS")
         adj_lbl.setObjectName("SectionHeader")
 
-        self._btn_profiles = QPushButton("📂  Profiles")
+        self._btn_auto_enhance = QPushButton("✨ Auto")
+        self._btn_auto_enhance.setFixedHeight(26)
+        self._btn_auto_enhance.setToolTip("Analyze video and set optimal adjustments")
+        self._btn_auto_enhance.clicked.connect(self._auto_enhance_video)
+
+        self._btn_revert_enhance = QPushButton("↩ Revert")
+        self._btn_revert_enhance.setFixedHeight(26)
+        self._btn_revert_enhance.setToolTip("Revert to settings before last Auto Enhance")
+        self._btn_revert_enhance.setEnabled(False)
+        self._btn_revert_enhance.clicked.connect(self._revert_enhance)
+
+        self._btn_profiles = QPushButton("📂 Profiles")
         self._btn_profiles.setFixedHeight(26)
+        self._btn_profiles.setToolTip("Save / load named adjustment profiles")
         self._btn_profiles.clicked.connect(self._open_profiles)
+
+        self._btn_presets = QPushButton("Presets")
+        self._btn_presets.setFixedHeight(26)
+        self._btn_presets.setToolTip("Built-in adjustment presets")
+        self._btn_presets.clicked.connect(self._open_presets)
 
         self._btn_reset = QPushButton("Reset")
         self._btn_reset.setObjectName("DangerButton")
         self._btn_reset.setFixedHeight(26)
+        self._btn_reset.setToolTip("Reset all adjustments to default")
         self._btn_reset.clicked.connect(self._reset_adjustments)
 
         pb_layout.addWidget(adj_lbl)
         pb_layout.addStretch()
+        pb_layout.addWidget(self._btn_auto_enhance)
+        pb_layout.addWidget(self._btn_revert_enhance)
         pb_layout.addWidget(self._btn_profiles)
+        pb_layout.addWidget(self._btn_presets)
         pb_layout.addWidget(self._btn_reset)
 
         self._adj_panel = AdjustmentPanel()
@@ -716,6 +766,18 @@ class QuickVideoEditor(QWidget):
         if self._cap:
             self._playback.release()
             self._cap = None
+
+        # Reset any active enhance worker / revert state
+        if self._ae_worker:
+            try:
+                self._ae_worker.finished_profile.disconnect()
+                self._ae_worker.error.disconnect()
+            except RuntimeError:
+                pass
+            self._ae_worker = None
+        self._pre_enhance_params = None
+        self._btn_revert_enhance.setEnabled(False)
+        self._btn_auto_enhance.setEnabled(True)
 
         # Open new capture
         self._cap = cv2.VideoCapture(str(vid.path.resolve()))
@@ -852,8 +914,60 @@ class QuickVideoEditor(QWidget):
         if vid.thumbnail is not None:
             self._filter_strip.set_source_image(vid.thumbnail)
 
+    # ── Auto Enhance & Profiles ───────────────────────────────────────────────
+
+    def _auto_enhance_video(self) -> None:
+        """Run auto_enhance_video_profile() in background thread and apply result."""
+        if not self._active_record:
+            QMessageBox.information(self, "No Video", "Please select a video first.")
+            return
+
+        # Snapshot current params for Revert
+        self._pre_enhance_params = self._active_record.params.copy()
+        self._btn_revert_enhance.setEnabled(False)
+
+        self._btn_auto_enhance.setEnabled(False)
+        self.set_loading(True)
+
+        self._ae_worker = QuickAutoEnhanceWorker(
+            str(self._active_record.path.resolve()), num_samples=30
+        )
+        self._ae_worker.finished_profile.connect(self._on_enhance_done)
+        self._ae_worker.error.connect(self._on_enhance_error)
+        self._ae_worker.start()
+
+    @Slot(object)
+    def _on_enhance_done(self, profile) -> None:
+        """Apply the EditProfile returned by QuickAutoEnhanceWorker."""
+        self._btn_auto_enhance.setEnabled(True)
+        self.set_loading(False)
+        params = profile_to_params(profile)
+        self._apply_profile(params)
+        self._btn_revert_enhance.setEnabled(True)
+
+    @Slot(str)
+    def _on_enhance_error(self, err: str) -> None:
+        self._btn_auto_enhance.setEnabled(True)
+        self.set_loading(False)
+        QMessageBox.critical(self, "Auto Enhance Error", f"Video auto-enhance failed:\n{err}")
+
+    def _revert_enhance(self) -> None:
+        """Restore the snapshot taken just before the last Auto Enhance."""
+        if self._pre_enhance_params is None:
+            return
+        self._apply_profile(self._pre_enhance_params)
+        self._btn_revert_enhance.setEnabled(False)
+        self._pre_enhance_params = None
+
     def _open_profiles(self):
-        """Open the preset/profile dialog for saving and loading edit profiles."""
+        """Open the persistent ProfileLibrary dialog for saving and loading edit profiles."""
+        current = self._active_record.params if self._active_record else AdjustmentParams()
+        dialog = ProfileLibraryDialog(current, self.window())
+        dialog.profile_loaded.connect(self._apply_profile)
+        dialog.exec()
+
+    def _open_presets(self):
+        """Open the preset dialog for built-in and user presets."""
         from ui.preset_dialog import PresetDialog
         current = self._active_record.params if self._active_record else AdjustmentParams()
         dialog = PresetDialog(current, self.window())
@@ -879,13 +993,6 @@ class QuickVideoEditor(QWidget):
         if self._active_record and self._current_raw_frame is not None:
             if self._show_processed:
                 self.request_render(self._playback.current_frame_index(), self._current_raw_frame, self._active_record.params)
-
-    def closeEvent(self, event):
-        self._playback.stop()
-        if hasattr(self, "_render_thread") and self._render_thread.isRunning():
-            self._render_thread.quit()
-            self._render_thread.wait(2000)
-        super().closeEvent(event)
 
     # ── Asynchronous Rendering Thread Communication ──────────────────────────
 
@@ -1020,6 +1127,15 @@ class QuickVideoEditor(QWidget):
     def closeEvent(self, event):
         self._playback.stop()
         self._storyboard.clear()
+
+        if self._ae_worker and self._ae_worker.isRunning():
+            try:
+                self._ae_worker.finished_profile.disconnect()
+                self._ae_worker.error.disconnect()
+            except RuntimeError:
+                pass
+            self._ae_worker.wait(1000)
+            self._ae_worker = None
         
         if hasattr(self, "_render_thread") and self._render_thread.isRunning():
             self._worker.release()
