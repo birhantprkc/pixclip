@@ -213,6 +213,201 @@ class QuickExportDialog(QDialog):
         super().closeEvent(event)
 
 
+# ── Quick Batch Export Worker ────────────────────────────────────────────────
+
+class QuickBatchExportWorker(QThread):
+    """
+    Sequentially exports multiple videos via FFmpeg, ensuring every video is processed
+    strictly with its OWN individual AdjustmentParams snapshot.
+    """
+    overall_progress = Signal(int, int, object)   # (current_video_1based, total_videos, VideoRecord)
+    frame_progress = Signal(int, int, float)      # (current_frame, total_frames, fps)
+    finished = Signal(int, int, bool, str)        # (succeeded_count, total_count, was_cancelled, message)
+
+    def __init__(self, tasks: list[dict], preset: str, crf: int):
+        super().__init__()
+        self.tasks = tasks  # list of {"record": VideoRecord, "params": AdjustmentParams, "output_path": str}
+        self.preset = preset
+        self.crf = crf
+        self._cancelled = False
+
+    def cancel(self):
+        self._cancelled = True
+
+    def run(self):
+        total = len(self.tasks)
+        succeeded = 0
+
+        for idx, task in enumerate(self.tasks, start=1):
+            if self._cancelled:
+                break
+
+            record = task["record"]
+            # Independent settings per video guaranteed
+            params = task["params"]
+            output_path = task["output_path"]
+
+            self.overall_progress.emit(idx, total, record)
+
+            def progress_cb(cur, tot, fps):
+                self.frame_progress.emit(cur, tot, fps)
+
+            success, message = run_ffmpeg_export(
+                str(record.path.resolve()),
+                output_path,
+                params,
+                preset=self.preset,
+                crf=self.crf,
+                progress_callback=progress_cb,
+                cancelled_check=lambda: self._cancelled,
+            )
+
+            if self._cancelled:
+                try:
+                    p = Path(output_path)
+                    if p.exists():
+                        p.unlink()
+                except Exception:
+                    pass
+                break
+
+            if success:
+                succeeded += 1
+
+        if self._cancelled:
+            self.finished.emit(succeeded, total, True, f"Batch export cancelled ({succeeded}/{total} exported).")
+        else:
+            self.finished.emit(succeeded, total, False, f"Exported {succeeded} of {total} videos successfully.")
+
+
+# ── Quick Batch Export Dialog ────────────────────────────────────────────────
+
+class QuickBatchExportDialog(QDialog):
+    """Modal progress dialog for batch quick video export with overall & per-video progress."""
+    cancelled = Signal()
+
+    def __init__(self, total_videos: int, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Quick Export All Videos")
+        self.setModal(True)
+        self.setFixedSize(500, 310)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
+        self.total_videos = total_videos
+        self._start_time = None
+        self._build_ui()
+
+    def _build_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setSpacing(12)
+
+        # Header
+        header = QHBoxLayout()
+        icon_lbl = QLabel("⚡")
+        icon_lbl.setObjectName("InfoFlash")
+        title = QLabel("Quick Exporting All Videos")
+        title.setObjectName("DialogTitle")
+        header.addWidget(icon_lbl)
+        header.addWidget(title)
+        header.addStretch()
+
+        # Overall progress text & bar
+        self._overall_label = QLabel(f"Preparing batch (0 / {self.total_videos} videos)…")
+        self._overall_label.setObjectName("DialogHighlight")
+
+        self._overall_bar = QProgressBar()
+        self._overall_bar.setValue(0)
+        self._overall_bar.setFixedHeight(8)
+        self._overall_bar.setTextVisible(False)
+
+        # Separator line
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.HLine)
+        sep.setObjectName("SectionDivider")
+
+        # Current video details
+        self._current_file_label = QLabel("Initializing…")
+        self._current_file_label.setObjectName("DialogSub")
+        self._current_file_label.setWordWrap(True)
+
+        info_row = QHBoxLayout()
+        self._speed_label = QLabel("Initializing FFmpeg…")
+        self._speed_label.setObjectName("DialogHighlight")
+        self._frame_label = QLabel("0 / 0 frames")
+        self._frame_label.setObjectName("DialogStats")
+        self._frame_label.setAlignment(Qt.AlignmentFlag.AlignRight)
+        info_row.addWidget(self._speed_label)
+        info_row.addStretch()
+        info_row.addWidget(self._frame_label)
+
+        self._current_bar = QProgressBar()
+        self._current_bar.setValue(0)
+        self._current_bar.setFixedHeight(10)
+        self._current_bar.setTextVisible(False)
+
+        self._eta_label = QLabel("")
+        self._eta_label.setObjectName("DialogSub")
+
+        # Cancel button
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.setObjectName("DangerButton")
+        cancel_btn.setFixedWidth(90)
+        cancel_btn.clicked.connect(self._on_cancel)
+
+        bottom_row = QHBoxLayout()
+        bottom_row.addWidget(self._eta_label)
+        bottom_row.addStretch()
+        bottom_row.addWidget(cancel_btn)
+
+        layout.addLayout(header)
+        layout.addWidget(self._overall_label)
+        layout.addWidget(self._overall_bar)
+        layout.addWidget(sep)
+        layout.addWidget(self._current_file_label)
+        layout.addLayout(info_row)
+        layout.addWidget(self._current_bar)
+        layout.addLayout(bottom_row)
+
+    def set_current_video(self, current_idx: int, total: int, record: VideoRecord):
+        self._overall_label.setText(f"Exporting video {current_idx} of {total}:  {record.name}")
+        if total > 0:
+            pct = int(((current_idx - 1) / total) * 100)
+            self._overall_bar.setValue(pct)
+        self._current_file_label.setText(f"File: {record.path.name}  ({record.width}×{record.height}, {record.fps:.1f} fps)")
+        self._current_bar.setValue(0)
+        self._frame_label.setText("0 / 0 frames")
+        self._speed_label.setText("Encoding…")
+        self._start_time = None
+
+    def set_frame_progress(self, current: int, total: int, fps: float):
+        import time
+        if self._start_time is None:
+            self._start_time = time.time()
+
+        if total > 0:
+            self._current_bar.setValue(int(current / total * 100))
+            self._frame_label.setText(f"{current} / {total} frames")
+
+        if fps > 0:
+            self._speed_label.setText(f"⚡ {fps:.0f} fps  (FFmpeg native)")
+
+        if self._start_time and fps > 0 and total > 0 and current > 0:
+            elapsed = time.time() - self._start_time
+            remaining = (total - current) / fps if fps > 0 else 0
+            self._eta_label.setText(
+                f"Elapsed: {elapsed:.0f}s  ·  Current file ETA: {remaining:.0f}s"
+            )
+
+    def _on_cancel(self):
+        self.cancelled.emit()
+        self.reject()
+
+    def closeEvent(self, event):
+        self.cancelled.emit()
+        super().closeEvent(event)
+
+
+
 # ── Single-frame Preview Widget ───────────────────────────────────────────────
 
 def _bgr_to_pixmap(frame: np.ndarray) -> QPixmap:
@@ -480,6 +675,7 @@ class QuickVideoEditor(QWidget):
         self._current_raw_frame: Optional[np.ndarray] = None
         self._show_processed = False
         self._export_worker: Optional[QuickExportWorker] = None
+        self._batch_export_worker: Optional[QuickBatchExportWorker] = None
         self._ae_worker: Optional[QuickAutoEnhanceWorker] = None
         self._pre_enhance_params: Optional[AdjustmentParams] = None  # for Revert
 
@@ -720,12 +916,23 @@ class QuickVideoEditor(QWidget):
         self._crf_combo.setCurrentIndex(0)
         self._crf_combo.setFixedWidth(150)
 
-        # Export button
+        # Export button (single active video)
         self._btn_export = QPushButton("⚡  Export Video")
         self._btn_export.setObjectName("PrimaryButton")
         self._btn_export.setFixedHeight(36)
-        self._btn_export.setFixedWidth(160)
+        self._btn_export.setFixedWidth(150)
+        self._btn_export.setToolTip("Quick Export current active video")
         self._btn_export.clicked.connect(self._start_export)
+
+        # Batch Export button (all videos, each with own settings)
+        self._btn_batch_export = QPushButton("⚡  Export All Videos…")
+        self._btn_batch_export.setObjectName("PrimaryButton")
+        self._btn_batch_export.setFixedHeight(36)
+        self._btn_batch_export.setFixedWidth(170)
+        self._btn_batch_export.setToolTip(
+            "Quick Export all imported videos — each video uses its own unique adjustment settings"
+        )
+        self._btn_batch_export.clicked.connect(self._start_batch_export)
 
         layout.addWidget(speed_lbl)
         layout.addWidget(self._preset_combo)
@@ -734,12 +941,14 @@ class QuickVideoEditor(QWidget):
         layout.addWidget(self._crf_combo)
         layout.addStretch()
         layout.addWidget(self._btn_export)
+        layout.addWidget(self._btn_batch_export)
 
         return bar
 
     def _connect_signals(self):
         # Video list
         self._video_list.video_selected.connect(self._on_video_selected)
+        self._video_list.context_menu_requested.connect(self._show_video_context_menu)
 
         # Adjustment panel (debounced - but for quick editor we just store)
         self._adj_panel.param_changed.connect(self._on_param_changed)
@@ -1101,6 +1310,105 @@ class QuickVideoEditor(QWidget):
         self._export_worker.start()
         dialog.exec()
 
+    def _start_batch_export(self):
+        """
+        Export all imported videos in the project sequentially using Quick Export.
+        CRITICAL: Each video is exported using its OWN unique adjustment settings (vid.params).
+        """
+        if not self._state.videos:
+            QMessageBox.information(
+                self, "No Videos", "Please import videos first before batch exporting."
+            )
+            return
+
+        out_dir = QFileDialog.getExistingDirectory(
+            self, "Select Export Folder for All Videos"
+        )
+        if not out_dir:
+            return
+
+        output_dir = Path(out_dir)
+        preset = self._get_preset_str()
+        crf = self._get_crf()
+
+        # Pause playback during export
+        self._playback.stop()
+
+        # Build task list: strictly preserve and snapshot each video's own parameters
+        tasks = []
+        used_names = set()
+        for vid in self._state.videos:
+            stem = vid.path.stem
+            candidate = f"{stem}_quick.mp4"
+            idx = 1
+            while candidate.lower() in used_names or (output_dir / candidate).exists() and candidate.lower() in used_names:
+                candidate = f"{stem}_quick_{idx}.mp4"
+                idx += 1
+            used_names.add(candidate.lower())
+
+            tasks.append({
+                "record": vid,
+                "params": vid.params.copy(),   # Own individual settings preserved
+                "output_path": str(output_dir / candidate),
+            })
+
+        dialog = QuickBatchExportDialog(len(tasks), self.window())
+        self._batch_export_worker = QuickBatchExportWorker(tasks, preset, crf)
+
+        def on_overall(cur_idx, total, record):
+            dialog.set_current_video(cur_idx, total, record)
+
+        def on_frame(cur, tot, fps):
+            dialog.set_frame_progress(cur, tot, fps)
+
+        def on_finished(succeeded, total, cancelled, message):
+            dialog.accept()
+            if self._batch_export_worker:
+                self._batch_export_worker.wait()
+            self._batch_export_worker = None
+
+            if cancelled:
+                QMessageBox.warning(
+                    self,
+                    "Batch Export Cancelled",
+                    f"Batch export was cancelled.\n{succeeded} of {total} videos were exported.",
+                )
+            else:
+                QMessageBox.information(
+                    self,
+                    "Batch Export Complete ⚡",
+                    f"All videos exported successfully with their own settings!\n\n"
+                    f"Saved {succeeded} of {total} videos to:\n{output_dir}",
+                )
+
+        self._batch_export_worker.overall_progress.connect(on_overall)
+        self._batch_export_worker.frame_progress.connect(on_frame)
+        self._batch_export_worker.finished.connect(on_finished)
+        dialog.cancelled.connect(self._batch_export_worker.cancel)
+
+        self._batch_export_worker.start()
+        dialog.exec()
+
+    def _show_video_context_menu(self, video_id: str, pos) -> None:
+        from PySide6.QtWidgets import QMenu
+        vid = self._state.get_video(video_id)
+        if not vid:
+            return
+        menu = QMenu(self)
+        act_export = menu.addAction("⚡ Quick Export Video…")
+        act_batch = menu.addAction("⚡ Quick Export All Videos…")
+        menu.addSeparator()
+        act_remove = menu.addAction("Remove from Project")
+
+        action = menu.exec(pos)
+        if action == act_export:
+            self._on_video_selected(video_id)
+            self._start_export()
+        elif action == act_batch:
+            self._start_batch_export()
+        elif action == act_remove:
+            self._video_list._remove_video(video_id)
+
     def on_tab_activated(self):
         """Called when user switches to this tab."""
         self._video_list.refresh()
@@ -1128,6 +1436,16 @@ class QuickVideoEditor(QWidget):
         self._playback.stop()
         self._storyboard.clear()
 
+        if self._batch_export_worker and self._batch_export_worker.isRunning():
+            self._batch_export_worker.cancel()
+            self._batch_export_worker.wait(1000)
+            self._batch_export_worker = None
+
+        if self._export_worker and self._export_worker.isRunning():
+            self._export_worker.cancel()
+            self._export_worker.wait(1000)
+            self._export_worker = None
+
         if self._ae_worker and self._ae_worker.isRunning():
             try:
                 self._ae_worker.finished_profile.disconnect()
@@ -1146,3 +1464,4 @@ class QuickVideoEditor(QWidget):
             self._cap.release()
             self._cap = None
         super().closeEvent(event)
+

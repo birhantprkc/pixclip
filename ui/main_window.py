@@ -838,6 +838,9 @@ class MainWindow(QMainWindow):
         self._act_export_quick = QAction("⚡ &Quick Export Video…", self)
         self._act_export_quick.triggered.connect(self._export_quick_video)
 
+        self._act_batch_export_quick = QAction("⚡ &Batch Quick Export All Videos…", self)
+        self._act_batch_export_quick.triggered.connect(self._batch_export_quick_videos)
+
         # ── General Actions ───────────────────────────────────────────────────
         self._act_quit = QAction("&Quit", self)
         self._act_quit.triggered.connect(self.close)
@@ -958,6 +961,9 @@ class MainWindow(QMainWindow):
     def _export_quick_video(self) -> None:
         self._quick_editor._start_export()
 
+    def _batch_export_quick_videos(self) -> None:
+        self._quick_editor._start_batch_export()
+
     def _reset_quick_all(self) -> None:
         self._quick_editor._reset_adjustments()
 
@@ -985,6 +991,7 @@ class MainWindow(QMainWindow):
         for act in [
             self._act_open_images, self._act_export_image, self._act_batch_export,
             self._act_open_videos, self._act_export_video, self._act_export_quick,
+            self._act_batch_export_quick,
             self._act_reset_all, self._act_reset_video_all, self._act_reset_quick_all,
             self._act_presets, self._act_video_presets, self._act_fit, self._act_100,
             self._act_quit
@@ -1020,6 +1027,7 @@ class MainWindow(QMainWindow):
         elif index == 1:  # Video Editor
             self._act_open_videos.setShortcut(QKeySequence("Ctrl+O"))
             self._act_export_video.setShortcut(QKeySequence("Ctrl+S"))
+            self._act_batch_export_quick.setShortcut(QKeySequence("Ctrl+Shift+S"))
             self._act_quit.setShortcut(QKeySequence("Ctrl+Q"))
             self._act_reset_video_all.setShortcut(QKeySequence("Ctrl+R"))
             self._act_fit.setShortcut(QKeySequence("F"))
@@ -1027,6 +1035,7 @@ class MainWindow(QMainWindow):
 
             self._menu_file.addAction(self._act_open_videos)
             self._menu_file.addAction(self._act_export_video)
+            self._menu_file.addAction(self._act_batch_export_quick)
             self._menu_file.addSeparator()
             self._menu_file.addAction(self._act_quit)
 
@@ -1043,11 +1052,13 @@ class MainWindow(QMainWindow):
         elif index == 2:  # Quick Export
             self._act_open_videos.setShortcut(QKeySequence("Ctrl+O"))
             self._act_export_quick.setShortcut(QKeySequence("Ctrl+S"))
+            self._act_batch_export_quick.setShortcut(QKeySequence("Ctrl+Shift+S"))
             self._act_quit.setShortcut(QKeySequence("Ctrl+Q"))
             self._act_reset_quick_all.setShortcut(QKeySequence("Ctrl+R"))
 
             self._menu_file.addAction(self._act_open_videos)
             self._menu_file.addAction(self._act_export_quick)
+            self._menu_file.addAction(self._act_batch_export_quick)
             self._menu_file.addSeparator()
             self._menu_file.addAction(self._act_quit)
 
@@ -1507,11 +1518,18 @@ class MainWindow(QMainWindow):
 
         menu = QMenu(self)
         act_export = menu.addAction("Export Video…")
+        act_export_quick = menu.addAction("⚡ Quick Export Video…")
+        act_batch_quick = menu.addAction("⚡ Quick Export All Videos…")
+        menu.addSeparator()
         act_remove = menu.addAction("Remove from Project")
 
         action = menu.exec(pos)
         if action == act_export:
             self._export_video(video_id)
+        elif action == act_export_quick:
+            self._export_quick_video()
+        elif action == act_batch_quick:
+            self._batch_export_quick_videos()
         elif action == act_remove:
             self._video_assets._remove_video(video_id)
 
