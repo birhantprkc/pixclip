@@ -1,0 +1,61 @@
+<?xml version='1.0' encoding='utf8'?>
+<nuitka-compilation-report nuitka_version="4.1rc9" nuitka_commercial_version="not installed" mode="standalone" completion="error exit message (1)" exit_message="pyqt6: Error, failed to locate the 'PyQt6' installation.">
+  <performance>
+    <memory_usage name="after_launch" value="42307584" />
+  </performance>
+  <data_composer blob_size="None" />
+  <performance-totals>
+    <optimization-time pass="all" time="0.0000" module_count="0" />
+    <code-generation-time time="0.0000" module_count="0" />
+  </performance-totals>
+  <command_line>
+    <option value="--mode=standalone" />
+    <option value="--output-dir=E:/EXE Builder" />
+    <option value="--windows-console-mode=disable" />
+    <option value="--product-name=PixClip" />
+    <option value="--product-version=1.0.1" />
+    <option value="--file-version=1.0.1" />
+    <option value="--enable-plugin=pyqt6" />
+    <option value="--show-progress" />
+    <option value="--assume-yes-for-downloads" />
+    <option value="E:/pixclip/main.py" />
+  </command_line>
+  <plugins>
+    <plugin name="anti-bloat" user_enabled="no" />
+    <plugin name="data-files" user_enabled="no" />
+    <plugin name="delvewheel" user_enabled="no" />
+    <plugin name="dll-files" user_enabled="no" />
+    <plugin name="gevent" user_enabled="no" />
+    <plugin name="gi" user_enabled="no" />
+    <plugin name="glfw" user_enabled="no" />
+    <plugin name="implicit-imports" user_enabled="no" />
+    <plugin name="kivy" user_enabled="no" />
+    <plugin name="matplotlib" user_enabled="no" />
+    <plugin name="multiprocessing" user_enabled="no" />
+    <plugin name="options-nanny" user_enabled="no" />
+    <plugin name="pbr-compat" user_enabled="no" />
+    <plugin name="pkg-resources" user_enabled="no" />
+    <plugin name="playwright" user_enabled="no" />
+    <plugin name="pyqt6" user_enabled="yes" />
+    <plugin name="pywebview" user_enabled="no" />
+    <plugin name="spacy" user_enabled="no" />
+    <plugin name="torch-jit" user_enabled="no" />
+    <plugin name="transformers" user_enabled="no" />
+  </plugins>
+  <distributions />
+  <python python_exe="${sys.prefix}\python.exe" python_flavor="CPython Official" python_version="3.12.10" os_name="Windows" os_release="11" arch_name="x86_64" filesystem_encoding="utf-8">
+    <search_path>
+      <path value="${cwd}" />
+      <path value="${sys.prefix}\DLLs" />
+      <path value="${sys.prefix}\Lib" />
+      <path value="${sys.prefix}" />
+      <path value="~\AppData\Roaming\Python\Python312\site-packages" />
+      <path value="~\AppData\Roaming\Python\Python312\site-packages\win32" />
+      <path value="~\AppData\Roaming\Python\Python312\site-packages\win32\lib" />
+      <path value="~\AppData\Roaming\Python\Python312\site-packages\Pythonwin" />
+      <path value="${sys.prefix}\Lib\site-packages" />
+      <path value="${sys.prefix}\Lib\site-packages\setuptools\_vendor" />
+    </search_path>
+  </python>
+  <output />
+</nuitka-compilation-report>
