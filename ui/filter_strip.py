@@ -2,6 +2,7 @@
 ui/filter_strip.py
 Horizontal scrollable filter selector strip.
 Shows filter family tabs + thumbnail previews with active state highlighting.
+Includes a filter intensity slider shown when a filter is active.
 """
 
 from __future__ import annotations
@@ -13,7 +14,7 @@ from PySide6.QtCore import Signal, Qt, QSize
 from PySide6.QtGui import QImage, QPixmap, QColor, QPainter, QFont
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QScrollArea, QLabel,
-    QPushButton, QFrame, QSizePolicy,
+    QPushButton, QFrame, QSizePolicy, QSlider,
 )
 
 from core.filters import get_filter_families, get_filter_thumbnail, FILTER_DEFINITIONS
@@ -86,15 +87,20 @@ class FilterButton(QWidget):
 class FilterStrip(QWidget):
     """
     Horizontal filter strip with family tabs and thumbnail previews.
+    Includes an intensity slider shown when a filter is active.
     """
     filter_selected = Signal(str)    # filter_id (or "none")
-    intensity_changed = Signal(float)
+    intensity_changed = Signal(float)  # 0.0 – 1.0
+
+    # Height when intensity bar is visible vs hidden
+    _HEIGHT_BASE = THUMB_H + 70
+    _HEIGHT_WITH_INTENSITY = THUMB_H + 98
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("FilterStrip")
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        self.setFixedHeight(THUMB_H + 70)
+        self.setFixedHeight(self._HEIGHT_BASE)
         self._source_img: Optional[np.ndarray] = None
         self._buttons: dict[str, FilterButton] = {}
         self._active_filter: str = "none"
@@ -118,7 +124,7 @@ class FilterStrip(QWidget):
         inner.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         inner.setObjectName("FilterInner")
         inner_layout = QVBoxLayout(inner)
-        inner_layout.setContentsMargins(8, 6, 8, 6)
+        inner_layout.setContentsMargins(8, 6, 8, 4)
         inner_layout.setSpacing(4)
 
         # ── Family tabs ───────────────────────────────────────────────────────
@@ -150,8 +156,6 @@ class FilterStrip(QWidget):
         families_layout.addStretch()
         inner_layout.addLayout(families_layout)
 
-        # Rely on global QSS for #FilterFamilyTab
-
         # ── Filter scroll area ────────────────────────────────────────────────
         self._scroll = QScrollArea()
         self._scroll.setFixedHeight(THUMB_H + 28)
@@ -174,14 +178,50 @@ class FilterStrip(QWidget):
             self._filter_layout.addWidget(btn)
             btn.setVisible(False)
 
-        # background is transparent by default in QSS
         self._scroll.setWidget(self._filter_row)
-
         inner_layout.addWidget(self._scroll)
+
+        # ── Intensity row (hidden until a filter is active) ───────────────────
+        self._intensity_row = QWidget()
+        self._intensity_row.setVisible(False)
+        intensity_layout = QHBoxLayout(self._intensity_row)
+        intensity_layout.setContentsMargins(0, 2, 0, 2)
+        intensity_layout.setSpacing(8)
+
+        intensity_lbl = QLabel("Intensity")
+        intensity_lbl.setObjectName("ParamLabel")
+        intensity_lbl.setFixedWidth(56)
+
+        self._intensity_slider = QSlider(Qt.Orientation.Horizontal)
+        self._intensity_slider.setRange(0, 100)
+        self._intensity_slider.setValue(100)
+        self._intensity_slider.setTickPosition(QSlider.TickPosition.NoTicks)
+        self._intensity_slider.valueChanged.connect(self._on_intensity_changed)
+
+        self._intensity_val_lbl = QLabel("100%")
+        self._intensity_val_lbl.setObjectName("ValueLabel")
+        self._intensity_val_lbl.setFixedWidth(38)
+        self._intensity_val_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+
+        intensity_layout.addWidget(intensity_lbl)
+        intensity_layout.addWidget(self._intensity_slider)
+        intensity_layout.addWidget(self._intensity_val_lbl)
+
+        inner_layout.addWidget(self._intensity_row)
+
         outer.addWidget(inner)
 
         # Show "None" family initially (empty)
         self._show_family_buttons("none")
+
+    def _on_intensity_changed(self, val: int) -> None:
+        self._intensity_val_lbl.setText(f"{val}%")
+        self.intensity_changed.emit(val / 100.0)
+
+    def _show_intensity_row(self, visible: bool) -> None:
+        self._intensity_row.setVisible(visible)
+        new_h = self._HEIGHT_WITH_INTENSITY if visible else self._HEIGHT_BASE
+        self.setFixedHeight(new_h)
 
     def _on_family_tab(self, family: str) -> None:
         # Update tab checked states
@@ -195,7 +235,6 @@ class FilterStrip(QWidget):
             self.filter_selected.emit("none")
 
     def _show_family_buttons(self, family: str) -> None:
-        families = get_filter_families()
         for fid, btn in self._buttons.items():
             if family == "none":
                 btn.setVisible(False)
@@ -207,12 +246,14 @@ class FilterStrip(QWidget):
         if self._active_filter == filter_id:
             # Toggle off
             self._deactivate_all()
+            self._show_intensity_row(False)
             self.filter_selected.emit("none")
         else:
             self._deactivate_all()
             self._active_filter = filter_id
             if filter_id in self._buttons:
                 self._buttons[filter_id].set_active(True)
+            self._show_intensity_row(True)
             self.filter_selected.emit(filter_id)
 
     def _deactivate_all(self) -> None:
@@ -240,6 +281,7 @@ class FilterStrip(QWidget):
                 btn.set_thumbnail(thumb)
 
     def set_active_filter(self, filter_id: str, silent: bool = True) -> None:
+        """Set the active filter and update the intensity row visibility."""
         self._deactivate_all()
         if filter_id != "none":
             self._active_filter = filter_id
@@ -248,4 +290,29 @@ class FilterStrip(QWidget):
             # Switch to the correct family tab
             fdef = FILTER_DEFINITIONS.get(filter_id)
             if fdef:
-                self._on_family_tab(fdef.family)
+                for fname, btn in self._family_tabs.items():
+                    btn.setChecked(fname == fdef.family)
+                self._active_family = fdef.family
+                self._show_family_buttons(fdef.family)
+            self._show_intensity_row(True)
+        else:
+            # Reset to "None" tab
+            for fname, btn in self._family_tabs.items():
+                btn.setChecked(fname == "none")
+            self._active_family = "none"
+            self._show_family_buttons("none")
+            self._show_intensity_row(False)
+
+    def set_filter_intensity(self, intensity: float, silent: bool = True) -> None:
+        """Set the intensity slider value (0.0–1.0). Used for two-way sync."""
+        val = max(0, min(100, int(round(intensity * 100))))
+        if silent:
+            self._intensity_slider.blockSignals(True)
+        self._intensity_slider.setValue(val)
+        self._intensity_val_lbl.setText(f"{val}%")
+        if silent:
+            self._intensity_slider.blockSignals(False)
+
+    def get_filter_intensity(self) -> float:
+        """Return current intensity as 0.0–1.0."""
+        return self._intensity_slider.value() / 100.0

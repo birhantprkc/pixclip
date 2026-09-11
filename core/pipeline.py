@@ -146,23 +146,28 @@ def apply_clarity(lab: np.ndarray, clarity: float) -> np.ndarray:
     if clarity <= 0.0:
         return lab
 
+    # clarity is stored on a 0–1000 scale; divide by 10 to get effective 0–100
+    c = clarity / 10.0
+
     L_norm = (lab[:, :, 0] / 100.0).astype(np.float32)
 
     # Bilateral filter: structure-preserving blur that respects edges
-    # sigmaColor=0.15 keeps edges sharp; sigmaSpace=20 captures mid-frequency
-    sigma_space = 15.0 + (clarity / 100.0) * 10.0  # scale radius with strength
+    # sigmaColor=0.12 keeps edges sharp; sigmaSpace scales with strength
+    sigma_space = 12.0 + (c / 100.0) * 18.0  # 12 → 30 across the full range
     blurred = cv2.bilateralFilter(L_norm, d=0, sigmaColor=0.12, sigmaSpace=sigma_space)
 
     # Detail layer = high-frequency + mid-frequency structure
     detail = L_norm - blurred
 
-    # Amplify detail layer — amount scales non-linearly for perceptual evenness
-    # At clarity=94: amplification ≈ 1 + 0.94 * 1.9 = 2.79
-    amplification = 1.0 + (clarity / 100.0) * 1.9
+    # Amplification starts at 0 (no effect) and scales to 2.9 at full strength.
+    # IMPORTANT: using (c/100)*X rather than 1.0+(c/100)*X avoids the jump
+    # that occurred on the very first slider step in the previous formula.
+    amplification = (c / 100.0) * 2.9
 
     L_enhanced = np.clip(L_norm + detail * amplification, 0.0, 1.0)
     lab[:, :, 0] = L_enhanced * 100.0
     return lab
+
 
 
 def apply_sharpness(img: np.ndarray, sharpness: float) -> np.ndarray:
@@ -174,8 +179,10 @@ def apply_sharpness(img: np.ndarray, sharpness: float) -> np.ndarray:
     if sharpness <= 0.0:
         return img
 
-    # amount: sharpness=34 → ~0.51, sharpness=100 → ~1.5
-    amount = (sharpness / 100.0) * 1.5
+    # sharpness is stored on a 0–1000 scale; divide by 10 to get effective 0–100
+    # amount: sharpness=340 (eff. 34) → ~0.51, sharpness=1000 (eff. 100) → ~1.5
+    s = sharpness / 10.0
+    amount = (s / 100.0) * 1.5
     radius = 0.8  # tight radius for fine detail only
 
     blurred = cv2.GaussianBlur(img, (0, 0), radius)

@@ -15,21 +15,21 @@ from PySide6.QtGui import QFont
 from core.params import AdjustmentParams
 
 
-# Parameter definitions: (param_name, display_label, min, max, default)
+# Parameter definitions: (param_name, display_label, min, max, default, display_divisor)
 CLARITY_PARAMS = [
-    ("clarity",   "Clarity",   0,    100,  0),
-    ("sharpness", "Sharpness", 0,    100,  0),
+    ("clarity",   "Clarity",   0,    1000,  0,  10.0),
+    ("sharpness", "Sharpness", 0,    1000,  0,  10.0),
 ]
 
 LIGHT_PARAMS = [
-    ("exposure",     "Exposure",    -100, 100, 0),
-    ("brightness",   "Brightness",  -100, 100, 0),
-    ("contrast",     "Contrast",    -100, 100, 0),
-    ("lightness",    "Lightness",   -100, 100, 0),
-    ("highlights",   "Highlights",  -100, 100, 0),
-    ("shadows",      "Shadows",     -100, 100, 0),
-    ("light_range",  "Light Range", -100, 100, 0),
-    ("dark_range",   "Dark Range",  -100, 100, 0),
+    ("exposure",     "Exposure",    -100, 100, 0,  1.0),
+    ("brightness",   "Brightness",  -100, 100, 0,  1.0),
+    ("contrast",     "Contrast",    -100, 100, 0,  1.0),
+    ("lightness",    "Lightness",   -100, 100, 0,  1.0),
+    ("highlights",   "Highlights",  -100, 100, 0,  1.0),
+    ("shadows",      "Shadows",     -100, 100, 0,  1.0),
+    ("light_range",  "Light Range", -100, 100, 0,  1.0),
+    ("dark_range",   "Dark Range",  -100, 100, 0,  1.0),
 ]
 
 
@@ -38,10 +38,11 @@ class ParamSlider(QWidget):
     value_changed = Signal(str, float)  # (param_name, value)
 
     def __init__(self, param: str, label: str, min_val: int, max_val: int,
-                 default: int = 0, parent=None):
+                 default: int = 0, parent=None, display_divisor: float = 1.0):
         super().__init__(parent)
         self._param = param
         self._default = default
+        self._display_divisor = display_divisor
         self._build_ui(label, min_val, max_val, default)
 
     def _build_ui(self, label: str, min_val: int, max_val: int, default: int):
@@ -56,10 +57,10 @@ class ParamSlider(QWidget):
         lbl = QLabel(label)
         lbl.setObjectName("ParamLabel")
 
-        self._value_label = QLabel(f"{default:+d}" if default != 0 else "0")
+        self._value_label = QLabel(self._format_val(default))
         self._value_label.setObjectName("ValueLabel")
         self._value_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        self._value_label.setFixedWidth(38)
+        self._value_label.setFixedWidth(42)
 
         top.addWidget(lbl)
         top.addStretch()
@@ -98,17 +99,22 @@ class ParamSlider(QWidget):
         layout.addLayout(top)
         layout.addLayout(slider_layout)
 
+    def _format_val(self, val: int) -> str:
+        """Format raw slider integer for display, applying display_divisor."""
+        if self._display_divisor != 1.0:
+            display = val / self._display_divisor
+            return f"{display:+.1f}" if display != 0.0 else "0.0"
+        return f"{val:+d}" if val != 0 else "0"
+
     def _on_slider_changed(self, val: int):
-        text = f"{val:+d}" if val != 0 else "0"
-        self._value_label.setText(text)
+        self._value_label.setText(self._format_val(val))
         self.value_changed.emit(self._param, float(val))
 
     def set_value(self, val: float, silent: bool = False) -> None:
         if silent:
             self._slider.blockSignals(True)
         self._slider.setValue(int(val))
-        text = f"{int(val):+d}" if int(val) != 0 else "0"
-        self._value_label.setText(text)
+        self._value_label.setText(self._format_val(int(val)))
         if silent:
             self._slider.blockSignals(False)
 
@@ -181,8 +187,8 @@ class AdjustmentPanel(QWidget):
 
         # ── Clarity & Sharpness ───────────────────────────────────────────────
         layout.addWidget(SectionHeader("CLARITY & SHARPNESS"))
-        for param, label, mn, mx, default in CLARITY_PARAMS:
-            s = ParamSlider(param, label, mn, mx, default)
+        for param, label, mn, mx, default, divisor in CLARITY_PARAMS:
+            s = ParamSlider(param, label, mn, mx, default, display_divisor=divisor)
             s.value_changed.connect(self._on_value_changed)
             self._sliders[param] = s
             layout.addWidget(s)
@@ -193,8 +199,8 @@ class AdjustmentPanel(QWidget):
 
         # ── Light & Exposure ──────────────────────────────────────────────────
         layout.addWidget(SectionHeader("LIGHT & EXPOSURE"))
-        for param, label, mn, mx, default in LIGHT_PARAMS:
-            s = ParamSlider(param, label, mn, mx, default)
+        for param, label, mn, mx, default, divisor in LIGHT_PARAMS:
+            s = ParamSlider(param, label, mn, mx, default, display_divisor=divisor)
             s.value_changed.connect(self._on_value_changed)
             self._sliders[param] = s
             layout.addWidget(s)

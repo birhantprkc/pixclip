@@ -1007,8 +1007,9 @@ class MainWindow(QMainWindow):
         # Adjustment panel
         self._adj_panel.param_changed.connect(self._on_param_changed)
 
-        # Filter strip
+        # Filter strip (image editor)
         self._filter_strip.filter_selected.connect(self._on_filter_selected)
+        self._filter_strip.intensity_changed.connect(self._on_filter_intensity_changed)
 
         # Scope
         self._scope.scope_changed.connect(self._on_scope_changed)
@@ -1024,8 +1025,10 @@ class MainWindow(QMainWindow):
 
         # Video filter strip
         self._video_filter_strip.filter_selected.connect(self._on_video_filter_selected)
+        self._video_filter_strip.intensity_changed.connect(self._on_video_filter_intensity_changed)
 
-
+        # Quick Editor → Video Editor real-time sync
+        self._quick_editor.params_updated.connect(self._on_quick_editor_params_updated)
 
         # Workspace tab switching
         self._workspace_tabs.currentChanged.connect(self._on_workspace_tab_changed)
@@ -1278,21 +1281,42 @@ class MainWindow(QMainWindow):
 
     @Slot(int)
     def _on_workspace_tab_changed(self, index: int) -> None:
-        """Pause video playback when switching away from the video editor tab."""
-        if index != 1:  # Not the video editor tab
+        """Handle tab switching with two-way sync between Video Editor and Quick Export."""
+        prev_index = getattr(self, "_prev_tab_index", 0)
+
+        # Pause video playback when leaving Video Editor
+        if index != 1:
             self._video_preview.pause()
-        else:
+
+        # Leaving Quick Export → sync any changes back to Video Editor
+        if prev_index == 2 and index != 2:
+            active_vid = self._state.active_video
+            if active_vid is not None and self._state.active_video_id:
+                self._video_adj_panel.load_params(active_vid.params, silent=True)
+                self._video_filter_strip.set_active_filter(active_vid.params.filter_id, silent=True)
+                self._video_filter_strip.set_filter_intensity(active_vid.params.filter_intensity, silent=True)
+
+        # Entering Video Editor → refresh asset list and reload active video
+        if index == 1:
             self._video_assets.refresh()
             active_id = self._state.active_video_id
             if active_id:
                 if not self._video_preview._record or self._video_preview._record.id != active_id:
                     self._on_video_selected(active_id)
 
-        if index != 2:  # Not the quick video editor tab
+        # Leaving Video Editor → stop quick editor
+        if index != 2:
             self._quick_editor.on_tab_deactivated()
         else:
+            # Entering Quick Export → sync Video Editor state into Quick Editor
             self._quick_editor.on_tab_activated()
+            active_id = self._state.active_video_id
+            if active_id:
+                vid = self._state.get_video(active_id)
+                if vid is not None:
+                    self._quick_editor.sync_from_record(vid)
 
+        self._prev_tab_index = index
         self._update_menus_for_tab(index)
 
     # ── Video Selection ───────────────────────────────────────────────────────
@@ -1308,6 +1332,7 @@ class MainWindow(QMainWindow):
         params = vid.params
         self._video_adj_panel.load_params(params, silent=True)
         self._video_filter_strip.set_active_filter(params.filter_id, silent=True)
+        self._video_filter_strip.set_filter_intensity(params.filter_intensity, silent=True)
 
         # Set filter strip source thumbnail for previews
         if vid.thumbnail is not None:
@@ -1338,6 +1363,45 @@ class MainWindow(QMainWindow):
         self._video_preview.set_params(vid.params)
         if vid.thumbnail is not None:
             self._video_filter_strip.update_visible_thumbnails()
+
+    @Slot(float)
+    def _on_video_filter_intensity_changed(self, intensity: float) -> None:
+        vid = self._state.active_video
+        if vid is None:
+            return
+        vid.params.filter_intensity = intensity
+        self._video_preview.set_params(vid.params)
+
+    @Slot(float)
+    def _on_filter_intensity_changed(self, intensity: float) -> None:
+        img = self._state.active_image
+        if img is None:
+            return
+        scope = self._scope.current_scope
+        if scope == "all":
+            self._state.global_params.filter_intensity = intensity
+        elif scope == "group" and self._scope.current_group:
+            gp = self._state.group_params.setdefault(self._scope.current_group, AdjustmentParams())
+            gp.filter_intensity = intensity
+        else:
+            img.params.filter_intensity = intensity
+        if img.original is not None:
+            params = self._state.resolved_params(img.id)
+            preview_frame = self._get_preview_frame(img)
+            self._schedule_preview(img.id, preview_frame, params)
+
+    @Slot(str)
+    def _on_quick_editor_params_updated(self, video_id: str) -> None:
+        """Quick Editor changed something — refresh Video Editor if it's showing the same video."""
+        vid = self._state.get_video(video_id)
+        if vid is None:
+            return
+        # Only update the Video Editor UI if it currently has the same video active
+        if (self._state.active_video_id == video_id and
+                self._workspace_tabs.currentIndex() != 2):
+            self._video_adj_panel.load_params(vid.params, silent=True)
+            self._video_filter_strip.set_active_filter(vid.params.filter_id, silent=True)
+            self._video_filter_strip.set_filter_intensity(vid.params.filter_intensity, silent=True)
 
 
 

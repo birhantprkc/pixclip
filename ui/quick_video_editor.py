@@ -443,6 +443,7 @@ class QuickVideoEditor(QWidget):
     """
     sig_render_requested = Signal(int, AdjustmentParams)
     sig_render_existing_requested = Signal(int, np.ndarray, AdjustmentParams)
+    params_updated = Signal(str)  # video_id — emitted when any param/filter changes
 
     def __init__(self, state: ProjectState, parent=None):
         super().__init__(parent)
@@ -599,6 +600,10 @@ class QuickVideoEditor(QWidget):
         adj_lbl = QLabel("ADJUSTMENTS")
         adj_lbl.setObjectName("SectionHeader")
 
+        self._btn_profiles = QPushButton("📂  Profiles")
+        self._btn_profiles.setFixedHeight(26)
+        self._btn_profiles.clicked.connect(self._open_profiles)
+
         self._btn_reset = QPushButton("Reset")
         self._btn_reset.setObjectName("DangerButton")
         self._btn_reset.setFixedHeight(26)
@@ -606,6 +611,7 @@ class QuickVideoEditor(QWidget):
 
         pb_layout.addWidget(adj_lbl)
         pb_layout.addStretch()
+        pb_layout.addWidget(self._btn_profiles)
         pb_layout.addWidget(self._btn_reset)
 
         self._adj_panel = AdjustmentPanel()
@@ -690,6 +696,7 @@ class QuickVideoEditor(QWidget):
 
         # Filter strip
         self._filter_strip.filter_selected.connect(self._on_filter_selected)
+        self._filter_strip.intensity_changed.connect(self._on_filter_intensity_changed)
 
     # ── Video Selection ───────────────────────────────────────────────────────
 
@@ -789,6 +796,7 @@ class QuickVideoEditor(QWidget):
         if not self._active_record:
             return
         setattr(self._active_record.params, param, value)
+        self.params_updated.emit(self._active_record.id)
 
         # If in processed mode, refresh current frame display
         if self._show_processed and self._current_raw_frame is not None:
@@ -799,6 +807,7 @@ class QuickVideoEditor(QWidget):
         if not self._active_record:
             return
         self._active_record.params.filter_id = filter_id
+        self.params_updated.emit(self._active_record.id)
 
         # Pre-export the cube file in background to avoid delay at export time
         if filter_id != "none":
@@ -810,6 +819,16 @@ class QuickVideoEditor(QWidget):
         if self._active_record.thumbnail is not None:
             self._filter_strip.update_visible_thumbnails()
 
+    @Slot(float)
+    def _on_filter_intensity_changed(self, intensity: float):
+        if not self._active_record:
+            return
+        self._active_record.params.filter_intensity = intensity
+        self.params_updated.emit(self._active_record.id)
+
+        if self._show_processed and self._current_raw_frame is not None:
+            self.request_render(self._playback.current_frame_index(), self._current_raw_frame, self._active_record.params)
+
     def _reset_adjustments(self):
         if not self._active_record:
             return
@@ -817,6 +836,40 @@ class QuickVideoEditor(QWidget):
         self._active_record.params = default
         self._adj_panel.load_params(default, silent=True)
         self._filter_strip.set_active_filter("none", silent=True)
+        self._filter_strip.set_filter_intensity(1.0, silent=True)
+        self.params_updated.emit(self._active_record.id)
+
+        if self._show_processed and self._current_raw_frame is not None:
+            self.request_render(self._playback.current_frame_index(), self._current_raw_frame, self._active_record.params)
+
+    def sync_from_record(self, vid) -> None:
+        """Refresh all UI controls from a VideoRecord — used for two-way tab sync."""
+        if vid is None:
+            return
+        self._adj_panel.load_params(vid.params, silent=True)
+        self._filter_strip.set_active_filter(vid.params.filter_id, silent=True)
+        self._filter_strip.set_filter_intensity(vid.params.filter_intensity, silent=True)
+        if vid.thumbnail is not None:
+            self._filter_strip.set_source_image(vid.thumbnail)
+
+    def _open_profiles(self):
+        """Open the preset/profile dialog for saving and loading edit profiles."""
+        from ui.preset_dialog import PresetDialog
+        current = self._active_record.params if self._active_record else AdjustmentParams()
+        dialog = PresetDialog(current, self.window())
+        dialog.preset_loaded.connect(self._apply_profile)
+        dialog.exec()
+
+    @Slot(AdjustmentParams)
+    def _apply_profile(self, params: AdjustmentParams) -> None:
+        """Apply a loaded profile to the active video."""
+        if not self._active_record:
+            return
+        self._active_record.params = params.copy()
+        self._adj_panel.load_params(params, silent=True)
+        self._filter_strip.set_active_filter(params.filter_id, silent=True)
+        self._filter_strip.set_filter_intensity(params.filter_intensity, silent=True)
+        self.params_updated.emit(self._active_record.id)
 
         if self._show_processed and self._current_raw_frame is not None:
             self.request_render(self._playback.current_frame_index(), self._current_raw_frame, self._active_record.params)

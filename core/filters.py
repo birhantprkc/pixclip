@@ -343,6 +343,116 @@ _register_family([
     ),
 ])
 
+# ── 10. Vintage Family — Sepia-toned faded old-school looks ──────────────────
+_register_family([
+    FilterDefinition(
+        id="vintage-1", name="Classic Sepia", family="Vintage",
+        description="Warm sepia tone, lifted blacks",
+        rgb_curve=[(0, 0.06), (0.3, 0.30), (0.7, 0.72), (1, 0.94)],
+        r_curve=[(0, 0.05), (0.5, 0.56), (1, 0.98)],
+        g_curve=[(0, 0.03), (0.5, 0.50), (1, 0.90)],
+        b_curve=[(0, 0.00), (0.5, 0.42), (1, 0.80)],
+        saturation_mult=0.30, lightness_add=0.03,
+    ),
+    FilterDefinition(
+        id="vintage-2", name="Faded Kodak", family="Vintage",
+        description="Faded Kodak paper print — warm midtones, pale highlights",
+        rgb_curve=[(0, 0.08), (0.4, 0.38), (0.8, 0.78), (1, 0.92)],
+        r_curve=[(0, 0.05), (0.5, 0.53), (1, 0.95)],
+        b_curve=[(0, 0.02), (0.5, 0.44), (1, 0.86)],
+        saturation_mult=0.55, lightness_add=0.04,
+        shadow_tint=(0.10, 0.08, 0.04), tint_strength=0.07,
+    ),
+    FilterDefinition(
+        id="vintage-3", name="Retro Chrome", family="Vintage",
+        description="1970s chrome-print look — shifted colors, high contrast",
+        rgb_curve=[(0, 0.02), (0.2, 0.16), (0.5, 0.52), (0.8, 0.85), (1, 0.97)],
+        r_curve=[(0, 0.04), (0.5, 0.55), (1, 0.99)],
+        g_curve=[(0, 0.02), (0.5, 0.49), (1, 0.92)],
+        b_curve=[(0, 0.00), (0.5, 0.44), (1, 0.85)],
+        saturation_mult=0.70, lightness_add=0.01,
+        shadow_tint=(0.08, 0.06, 0.02), tint_strength=0.06,
+    ),
+    FilterDefinition(
+        id="vintage-4", name="Old Polaroid", family="Vintage",
+        description="Polaroid SX-70 — faded yellow-green cast, soft contrast",
+        rgb_curve=[(0, 0.09), (0.5, 0.50), (1, 0.90)],
+        r_curve=[(0, 0.06), (0.5, 0.52), (1, 0.93)],
+        g_curve=[(0, 0.05), (0.5, 0.52), (1, 0.91)],
+        b_curve=[(0, 0.02), (0.5, 0.44), (1, 0.84)],
+        saturation_mult=0.50, lightness_add=0.05,
+        shadow_tint=(0.06, 0.07, 0.02), highlight_tint=(0.05, 0.05, 0.02), tint_strength=0.06,
+    ),
+])
+
+# ── 11. B&W Family — Monochrome tone curve variants ───────────────────────────
+_register_family([
+    FilterDefinition(
+        id="bw-1", name="B&W Standard", family="B&W",
+        description="Neutral black & white — classic luminance desaturation",
+        rgb_curve=[(0, 0), (0.25, 0.24), (0.5, 0.50), (0.75, 0.76), (1, 1)],
+        saturation_mult=0.0, lightness_add=0.0,
+    ),
+    FilterDefinition(
+        id="bw-2", name="B&W High Contrast", family="B&W",
+        description="Punchy B&W — strong S-curve, deep blacks, bright highlights",
+        rgb_curve=[(0, 0), (0.15, 0.08), (0.5, 0.52), (0.85, 0.93), (1, 1)],
+        saturation_mult=0.0, lightness_add=0.0,
+    ),
+    FilterDefinition(
+        id="bw-3", name="B&W Soft Matte", family="B&W",
+        description="Soft B&W — lifted blacks, gentle midtones, matte finish",
+        rgb_curve=[(0, 0.07), (0.35, 0.34), (0.70, 0.70), (1, 0.93)],
+        saturation_mult=0.0, lightness_add=0.03,
+    ),
+    FilterDefinition(
+        id="bw-4", name="Selenium Tone", family="B&W",
+        description="Selenium-toned silver print — cool purple-gray cast",
+        rgb_curve=[(0, 0.01), (0.3, 0.27), (0.7, 0.73), (1, 0.99)],
+        r_curve=[(0, 0), (0.5, 0.49), (1, 0.97)],
+        b_curve=[(0, 0.01), (0.5, 0.52), (1, 1.0)],
+        saturation_mult=0.10, lightness_add=0.0,
+        shadow_tint=(0.06, 0.04, 0.08), tint_strength=0.06,
+    ),
+])
+
+# ── 12. Cool Tones Family — Arctic, ice-blue, and cold atmospheric casts ───────
+_register_family([
+    FilterDefinition(
+        id="cool-1", name="Arctic Light", family="Cool Tones",
+        description="Clean cold light — boosted blues, reduced warmth",
+        rgb_curve=[(0, 0), (0.25, 0.23), (0.75, 0.78), (1, 1)],
+        r_curve=[(0, 0), (0.5, 0.47), (1, 0.95)],
+        b_curve=[(0, 0.01), (0.5, 0.54), (1, 1.0)],
+        saturation_mult=0.92, lightness_add=0.01,
+    ),
+    FilterDefinition(
+        id="cool-2", name="Ice Blue", family="Cool Tones",
+        description="Icy blue cast — vivid cold highlights, steel shadows",
+        rgb_curve=[(0, 0), (0.2, 0.17), (0.5, 0.51), (0.8, 0.84), (1, 1)],
+        r_curve=[(0, 0), (0.5, 0.45), (1, 0.92)],
+        b_curve=[(0, 0.02), (0.5, 0.56), (1, 1.0)],
+        saturation_mult=1.05,
+        shadow_tint=(0.08, 0.08, 0.14), highlight_tint=(0.02, 0.05, 0.12), tint_strength=0.10,
+    ),
+    FilterDefinition(
+        id="cool-3", name="Overcast", family="Cool Tones",
+        description="Flat cool overcast day — muted, even, desaturated blues",
+        rgb_curve=[(0, 0.04), (0.4, 0.38), (0.8, 0.79), (1, 0.95)],
+        saturation_mult=0.72,
+        shadow_tint=(0.06, 0.07, 0.11), tint_strength=0.06,
+    ),
+    FilterDefinition(
+        id="cool-4", name="Moonlight", family="Cool Tones",
+        description="Moonlit scene — deep indigo shadows, pale silver highlights",
+        rgb_curve=[(0, 0), (0.15, 0.10), (0.5, 0.52), (0.85, 0.89), (1, 1)],
+        r_curve=[(0, 0), (0.5, 0.45), (1, 0.93)],
+        b_curve=[(0, 0.02), (0.5, 0.57), (1, 1.0)],
+        saturation_mult=0.78, lightness_add=-0.02,
+        shadow_tint=(0.10, 0.08, 0.16), highlight_tint=(0.03, 0.04, 0.10), tint_strength=0.12,
+    ),
+])
+
 
 # ── LUT Cache ─────────────────────────────────────────────────────────────────
 
