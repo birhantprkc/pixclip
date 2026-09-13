@@ -200,11 +200,11 @@ def build_ffmpeg_vf(params: AdjustmentParams) -> str:
          shadows, lightness, tonal range, 3D LUT filter) are baked into a
          high-precision 3D LUT (.cube). FFmpeg applies this via lut3d in real-time,
          guaranteeing an exact match with the preview window.
-      2. Clarity: applied using a large-radius unsharp on luma only (13:13) with
-         gentle local contrast scaling (max 0.35), preventing white haloing.
-      3. Sharpness: normalized from the 0–1000 slider range to 0–100, then mapped
-         to a fine-radius unsharp (5:5) on luma only with a safe amount (max 0.85),
-         eliminating the white dots and ringing artifacts.
+      2. Clarity: applied using a large-radius unsharp (15:15) on luma only with
+         amount scaled up to 1.2 at full strength — calibrated to match the Python
+         bilateral clarity amplification (up to 2.9x on the detail layer).
+      3. Sharpness: applied using a fine-radius unsharp (5:5) on luma only with
+         amount up to 1.5 at full strength — matching Python apply_sharpness output.
     """
     filters: list[str] = []
 
@@ -212,25 +212,30 @@ def build_ffmpeg_vf(params: AdjustmentParams) -> str:
     if has_color_adjustments(params):
         cube_path = generate_adjustment_cube(params)
         if cube_path and cube_path.exists():
-            # For Windows FFmpeg, escape colon as '\\:' so FFmpeg filtergraph parses it correctly
-            path_str = cube_path.as_posix().replace(":", r"\\:")
+            # For Windows FFmpeg, escape the drive-letter colon with a single backslash
+            # so FFmpeg's filtergraph parser doesn't treat it as an option separator.
+            # r"\:" is the 2-char string "\:" which FFmpeg interprets as a literal colon.
+            path_str = cube_path.as_posix().replace(":", r"\:")
             filters.append(f"lut3d=file={path_str}:interp=tetrahedral")
 
     # ── 2. Clarity (Local contrast enhancement on luma) ──────────────────────
     # Clarity is on a 0–100 scale
     if params.clarity > 0.0:
         c_norm = max(0.0, min(1.0, params.clarity / 100.0))
-        # Subtle, smooth local contrast boost without edge ringing
-        amount = c_norm * 0.35
-        filters.append(f"unsharp=13:13:{amount:.3f}:3:3:0")
+        # Use 15x15 radius (≈ bilateral sigma_space range) to match the Python
+        # bilateral clarity amplification (up to 2.9x at full strength).
+        # amount 1.2 at full clarity produces visually equivalent local contrast boost.
+        amount = c_norm * 1.2
+        filters.append(f"unsharp=15:15:{amount:.3f}:0:0:0")
 
     # ── 3. Sharpness (Fine edge enhancement on luma) ─────────────────────────
     # Sharpness is on a 0–100 scale
     if params.sharpness > 0.0:
         s_norm = max(0.0, min(1.0, params.sharpness / 100.0))
-        # Safe edge sharpening without noise amplification or white speckles
-        amount = s_norm * 0.85
-        filters.append(f"unsharp=5:5:{amount:.3f}:3:3:0")
+        # Fine-radius USM to match Python apply_sharpness (amount up to 1.5 at 100).
+        # Luma-only (chroma 0:0:0) avoids color fringing artifacts.
+        amount = s_norm * 1.5
+        filters.append(f"unsharp=5:5:{amount:.3f}:0:0:0")
     elif params.sharpness < 0.0:
         # Blur (negative sharpness)
         sigma = min(5.0, abs(params.sharpness) / 100.0 * 2.5)
