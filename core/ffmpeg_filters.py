@@ -213,32 +213,31 @@ def build_ffmpeg_vf(params: AdjustmentParams) -> str:
         cube_path = generate_adjustment_cube(params)
         if cube_path and cube_path.exists():
             # For Windows FFmpeg, escape the drive-letter colon with a single backslash
-            # so FFmpeg's filtergraph parser doesn't treat it as an option separator.
-            # r"\:" is the 2-char string "\:" which FFmpeg interprets as a literal colon.
+            # and wrap in single quotes so FFmpeg's filtergraph parser doesn't split on ':'.
             path_str = cube_path.as_posix().replace(":", r"\:")
-            filters.append(f"lut3d=file={path_str}:interp=tetrahedral")
+            filters.append(f"lut3d=file='{path_str}':interp=tetrahedral")
 
     # ── 2. Clarity (Local contrast enhancement on luma) ──────────────────────
-    # Clarity is on a 0–100 scale
+    # Clarity is on a 0–1000 scale in AdjustmentParams (0–100.0 on slider)
     if params.clarity > 0.0:
-        c_norm = max(0.0, min(1.0, params.clarity / 100.0))
-        # Use 15x15 radius (≈ bilateral sigma_space range) to match the Python
-        # bilateral clarity amplification (up to 2.9x at full strength).
+        c_norm = max(0.0, min(1.0, params.clarity / 1000.0))
+        # Use 13x13 radius (max matrix size allowed by FFmpeg unsharp filter is 13x13)
+        # to match the Python bilateral clarity amplification (up to 2.9x at full strength).
         # amount 1.2 at full clarity produces visually equivalent local contrast boost.
         amount = c_norm * 1.2
-        filters.append(f"unsharp=15:15:{amount:.3f}:3:3:0")
+        filters.append(f"unsharp=13:13:{amount:.3f}:3:3:0")
 
     # ── 3. Sharpness (Fine edge enhancement on luma) ─────────────────────────
-    # Sharpness is on a 0–100 scale
+    # Sharpness is on a 0–1000 scale in AdjustmentParams (0–100.0 on slider)
     if params.sharpness > 0.0:
-        s_norm = max(0.0, min(1.0, params.sharpness / 100.0))
-        # Fine-radius USM to match Python apply_sharpness (amount up to 1.5 at 100).
-        # Luma-only (chroma 0:0:0) avoids color fringing artifacts.
+        s_norm = max(0.0, min(1.0, params.sharpness / 1000.0))
+        # Fine-radius USM (5x5) to match Python apply_sharpness (amount up to 1.5 at 100).
+        # Luma-only (chroma 3:3:0) avoids color fringing artifacts.
         amount = s_norm * 1.5
         filters.append(f"unsharp=5:5:{amount:.3f}:3:3:0")
     elif params.sharpness < 0.0:
         # Blur (negative sharpness)
-        sigma = min(5.0, abs(params.sharpness) / 100.0 * 2.5)
+        sigma = min(5.0, abs(params.sharpness) / 1000.0 * 2.5)
         filters.append(f"gblur=sigma={sigma:.2f}")
 
     return ",".join(filters) if filters else "null"

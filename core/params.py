@@ -19,8 +19,8 @@ class AdjustmentParams:
     Ranges mirror the Xiaomi/Redmi editor style (-100 to +100 or 0 to 100).
     """
     # ── Clarity & Sharpness (highest priority) ──────────────────────────────
-    clarity: float = 0.0       # 0 → 100  (Local Contrast Enhancement strength)
-    sharpness: float = 0.0     # 0 → 100  (Unsharp Mask strength)
+    clarity: float = 0.0       # 0 → 1000 (Local Contrast Enhancement strength; UI display /10 is 0–100)
+    sharpness: float = 0.0     # 0 → 1000 (Unsharp Mask strength; UI display /10 is 0–100)
 
     # ── Light & Exposure Controls ────────────────────────────────────────────
     exposure: float = 0.0      # -100 → +100  (EV mapped to ±3 stops)

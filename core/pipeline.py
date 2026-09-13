@@ -146,8 +146,8 @@ def apply_clarity(lab: np.ndarray, clarity: float) -> np.ndarray:
     if clarity <= 0.0:
         return lab
 
-    # clarity is on a 0–100 scale directly
-    c = clarity
+    # clarity is stored on a 0–1000 scale; divide by 10 to get effective 0–100
+    c = clarity / 10.0
 
     L_norm = (lab[:, :, 0] / 100.0).astype(np.float32)
 
@@ -175,15 +175,15 @@ def apply_sharpness(img: np.ndarray, sharpness: float) -> np.ndarray:
     Unsharp Masking (USM) for fine edge enhancement.
     Uses a noise threshold to avoid sharpening grain/JPEG artifacts.
 
-    sharpness: 0–100 scale (as stored in AdjustmentParams).
-    Reference: sharpness=34 → subtle but definite edge crispness.
+    sharpness: 0–1000 scale (as stored in AdjustmentParams; effective 0–100).
+    Reference: sharpness=340 (eff. 34) → subtle but definite edge crispness.
     """
     if sharpness <= 0.0:
         return img
 
-    # sharpness is on a 0–100 scale directly
-    # amount: sharpness=34 → ~0.51, sharpness=100 → ~1.5
-    s = sharpness
+    # sharpness is stored on a 0–1000 scale; divide by 10 to get effective 0–100
+    # amount: sharpness=340 (eff. 34) → ~0.51, sharpness=1000 (eff. 100) → ~1.5
+    s = sharpness / 10.0
     amount = (s / 100.0) * 1.5
     radius = 0.8  # tight radius for fine detail only
 
