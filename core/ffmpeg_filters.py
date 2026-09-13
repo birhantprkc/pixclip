@@ -226,7 +226,7 @@ def build_ffmpeg_vf(params: AdjustmentParams) -> str:
         # bilateral clarity amplification (up to 2.9x at full strength).
         # amount 1.2 at full clarity produces visually equivalent local contrast boost.
         amount = c_norm * 1.2
-        filters.append(f"unsharp=15:15:{amount:.3f}:0:0:0")
+        filters.append(f"unsharp=15:15:{amount:.3f}:3:3:0")
 
     # ── 3. Sharpness (Fine edge enhancement on luma) ─────────────────────────
     # Sharpness is on a 0–100 scale
@@ -235,7 +235,7 @@ def build_ffmpeg_vf(params: AdjustmentParams) -> str:
         # Fine-radius USM to match Python apply_sharpness (amount up to 1.5 at 100).
         # Luma-only (chroma 0:0:0) avoids color fringing artifacts.
         amount = s_norm * 1.5
-        filters.append(f"unsharp=5:5:{amount:.3f}:0:0:0")
+        filters.append(f"unsharp=5:5:{amount:.3f}:3:3:0")
     elif params.sharpness < 0.0:
         # Blur (negative sharpness)
         sigma = min(5.0, abs(params.sharpness) / 100.0 * 2.5)
