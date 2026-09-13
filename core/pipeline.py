@@ -140,14 +140,14 @@ def apply_clarity(lab: np.ndarray, clarity: float) -> np.ndarray:
     Uses a structure-preserving bilateral filter to isolate detail layers,
     then amplifies the mid-frequency detail proportionally to clarity strength.
 
-    Reference: clarity=94 → extreme definition boost (cuts through atmospheric fog).
-    Amplification: clarity 100 → ~2.8x the natural detail layer.
+    clarity: 0–100 scale (as stored in AdjustmentParams).
+    Amplification: clarity=100 → ~2.9x the natural detail layer.
     """
     if clarity <= 0.0:
         return lab
 
-    # clarity is stored on a 0–1000 scale; divide by 10 to get effective 0–100
-    c = clarity / 10.0
+    # clarity is on a 0–100 scale directly
+    c = clarity
 
     L_norm = (lab[:, :, 0] / 100.0).astype(np.float32)
 
@@ -174,14 +174,16 @@ def apply_sharpness(img: np.ndarray, sharpness: float) -> np.ndarray:
     """
     Unsharp Masking (USM) for fine edge enhancement.
     Uses a noise threshold to avoid sharpening grain/JPEG artifacts.
+
+    sharpness: 0–100 scale (as stored in AdjustmentParams).
     Reference: sharpness=34 → subtle but definite edge crispness.
     """
     if sharpness <= 0.0:
         return img
 
-    # sharpness is stored on a 0–1000 scale; divide by 10 to get effective 0–100
-    # amount: sharpness=340 (eff. 34) → ~0.51, sharpness=1000 (eff. 100) → ~1.5
-    s = sharpness / 10.0
+    # sharpness is on a 0–100 scale directly
+    # amount: sharpness=34 → ~0.51, sharpness=100 → ~1.5
+    s = sharpness
     amount = (s / 100.0) * 1.5
     radius = 0.8  # tight radius for fine detail only
 

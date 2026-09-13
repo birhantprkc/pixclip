@@ -217,25 +217,23 @@ def build_ffmpeg_vf(params: AdjustmentParams) -> str:
             filters.append(f"lut3d=file={path_str}:interp=tetrahedral")
 
     # ── 2. Clarity (Local contrast enhancement on luma) ──────────────────────
-    # Clarity is stored on a 0–1000 scale; normalize to 0–100
-    eff_clarity = params.clarity / 10.0 if abs(params.clarity) > 100.0 else params.clarity
-    if eff_clarity > 0.0:
-        c_norm = max(0.0, min(1.0, eff_clarity / 100.0))
+    # Clarity is on a 0–100 scale
+    if params.clarity > 0.0:
+        c_norm = max(0.0, min(1.0, params.clarity / 100.0))
         # Subtle, smooth local contrast boost without edge ringing
         amount = c_norm * 0.35
         filters.append(f"unsharp=13:13:{amount:.3f}:3:3:0")
 
     # ── 3. Sharpness (Fine edge enhancement on luma) ─────────────────────────
-    # Sharpness is stored on a 0–1000 scale; normalize to 0–100
-    eff_sharpness = params.sharpness / 10.0 if abs(params.sharpness) > 100.0 else params.sharpness
-    if eff_sharpness > 0.0:
-        s_norm = max(0.0, min(1.0, eff_sharpness / 100.0))
+    # Sharpness is on a 0–100 scale
+    if params.sharpness > 0.0:
+        s_norm = max(0.0, min(1.0, params.sharpness / 100.0))
         # Safe edge sharpening without noise amplification or white speckles
         amount = s_norm * 0.85
         filters.append(f"unsharp=5:5:{amount:.3f}:3:3:0")
-    elif eff_sharpness < 0.0:
+    elif params.sharpness < 0.0:
         # Blur (negative sharpness)
-        sigma = min(5.0, abs(eff_sharpness) / 100.0 * 2.5)
+        sigma = min(5.0, abs(params.sharpness) / 100.0 * 2.5)
         filters.append(f"gblur=sigma={sigma:.2f}")
 
     return ",".join(filters) if filters else "null"
