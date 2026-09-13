@@ -200,16 +200,27 @@ def build_ffmpeg_vf(params: AdjustmentParams) -> str:
          shadows, lightness, tonal range, 3D LUT filter) are baked into a
          high-precision 3D LUT (.cube). FFmpeg applies this via lut3d in real-time,
          guaranteeing an exact match with the preview window.
-      2. Clarity: applied using a large-radius unsharp (15:15) on luma only with
-         amount scaled up to 1.2 at full strength — calibrated to match the Python
-         bilateral clarity amplification (up to 2.9x on the detail layer).
-      3. Sharpness: applied using a fine-radius unsharp (5:5) on luma only with
-         amount up to 1.5 at full strength — matching Python apply_sharpness output.
+      2. Clarity (Local Contrast Enhancement):
+         In the preview pipeline, clarity uses a large-radius (12–30px) bilateral
+         filter to isolate the mid-frequency detail layer, amplifying it by up to 2.9x.
+         In FFmpeg, a standard unsharp(13x13) only reaches 6px and cannot extract mid-frequencies,
+         leaving exported video looking flat and unedited compared to the preview.
+         We implement true LCE via:
+           split[orig][forblur];[forblur]boxblur=lr={radius}:lp=2:cr=0[blurred];
+           [orig][blurred]lut2=c0='clip(x+(x-y)*{amp:.3f},0,255)':c1=x:c2=x
+         This operates on the luma channel with a wide radius (7–11px with 2 passes ≈ 15–25px
+         effective Gaussian radius), amplifying local contrast smoothly without haloing or
+         color artifacts, perfectly matching the Python preview look and depth.
+      3. Sharpness: fine-radius USM (5:5) on luma only, matching Python apply_sharpness.
     """
+    if params.is_default():
+        return "null"
+
     filters: list[str] = []
 
     # ── 1. Color / Tone / Filter via 3D LUT ──────────────────────────────────
-    if has_color_adjustments(params):
+    has_color = has_color_adjustments(params)
+    if has_color:
         cube_path = generate_adjustment_cube(params)
         if cube_path and cube_path.exists():
             # For Windows FFmpeg, escape the drive-letter colon with a single backslash
@@ -217,15 +228,24 @@ def build_ffmpeg_vf(params: AdjustmentParams) -> str:
             path_str = cube_path.as_posix().replace(":", r"\:")
             filters.append(f"lut3d=file='{path_str}':interp=tetrahedral")
 
-    # ── 2. Clarity (Local contrast enhancement on luma) ──────────────────────
+    # ── 2. Clarity (Local Contrast Enhancement on Luma) ──────────────────────
     # Clarity is on a 0–1000 scale in AdjustmentParams (0–100.0 on slider)
     if params.clarity > 0.0:
         c_norm = max(0.0, min(1.0, params.clarity / 1000.0))
-        # Use 13x13 radius (max matrix size allowed by FFmpeg unsharp filter is 13x13)
-        # to match the Python bilateral clarity amplification (up to 2.9x at full strength).
-        # amount 1.2 at full clarity produces visually equivalent local contrast boost.
-        amount = c_norm * 1.2
-        filters.append(f"unsharp=13:13:{amount:.3f}:3:3:0")
+        # Radius 7 to 11 with 2 passes approximates the 12–30px bilateral sigma_space range
+        radius = int(round(7 + c_norm * 4))
+        # Amount 1.30 at full clarity matches the 2.9x bilateral amplification in Python preview
+        amp = c_norm * 1.30
+
+        if has_color:
+            filters.append("format=yuv420p")
+
+        clarity_filter = (
+            f"split[orig][forblur];"
+            f"[forblur]boxblur=lr={radius}:lp=2:cr=0[blurred];"
+            f"[orig][blurred]lut2=c0='clip(x+(x-y)*{amp:.3f},0,255)':c1=x:c2=x"
+        )
+        filters.append(clarity_filter)
 
     # ── 3. Sharpness (Fine edge enhancement on luma) ─────────────────────────
     # Sharpness is on a 0–1000 scale in AdjustmentParams (0–100.0 on slider)
