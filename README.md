@@ -9,7 +9,7 @@
   [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
   ![Python](https://img.shields.io/badge/Python-3.9%2B-blue)
   ![UI](https://img.shields.io/badge/UI-PySide6%20%2F%20Qt6-green)
-  ![Version](https://img.shields.io/badge/version-1.0.0-orange)
+  ![Version](https://img.shields.io/badge/version-1.1.0-orange)
 
   <p>
     <a href="https://sourceforge.net/projects/pixclip/" target="_blank">🚀 SourceForge</a> •

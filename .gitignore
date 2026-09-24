@@ -1,31 +1,63 @@
-# Byte-compiled / optimized / DLL files
+# Python
 __pycache__/
 *.py[cod]
-*$py.class
-
-# C extensions
+*.pyo
+*.pyd
 *.so
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+.env
 
-# OS-generated files
+# IDE / Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
 Thumbs.db
 db.properties
-.DS_Store
-
-# IDE and Project metadata
-.vscode/
-.idea/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
-*.swp
 
-# FFmpeg Executables (huge binary files)
-ffmpeg.exe
+# Project-specific
+/PLAN.md
+/ffmpeg/ffmpeg.exe
+/temp/previews/
+/temp/edited/
+/temp/thumbnails/
+/temp/metadata/
+/temp/state.json
+/versioninfo-changed.txt
 
-# Local Application Caches & Temporary Outputs
-temp/previews/
-temp/edited/
-temp/thumbnails/
-temp/metadata/
-temp/state.json
+# Build artifacts
+.sconsign-312.dblite
+.sconsign*.dblite
+@link_input.txt
+build_definitions.h
+scons-report.txt
+scons-error-report.pickle
+nuitka-crash-report.xml
+*.build/
+*.dist/
+
+# Lint / Type check caches
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
+# Logs
+*.log
+
+# Local user data (created at runtime)
+PixClip/
+
+# Windows user data artefact from early cross-platform refactoring
+C:

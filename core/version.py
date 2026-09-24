@@ -15,11 +15,11 @@ def get_version_info() -> dict:
         except Exception:
             pass
     return {
-        "version": "1.0.0",
-        "build": 100,
-        "release_date": "2026-06-18",
+        "version": "1.1.0",
+        "build": 110,
+        "release_date": "2026-09-24",
         "description": "Creative Image & Video Editor"
     }
 
 VERSION_INFO = get_version_info()
-__version__ = VERSION_INFO.get("version", "1.0.0")
+__version__ = VERSION_INFO.get("version", "1.1.0")
